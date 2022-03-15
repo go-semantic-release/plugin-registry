@@ -5,13 +5,17 @@ import (
 	"io"
 	"net/http"
 
+	"cloud.google.com/go/firestore"
+	"github.com/google/go-github/v43/github"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	router *httprouter.Router
-	log    *logrus.Logger
+	router   *httprouter.Router
+	log      *logrus.Logger
+	db       *firestore.Client
+	ghClient *github.Client
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -52,17 +56,23 @@ func (s *Server) globalOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func New(log *logrus.Logger) *Server {
+func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Server {
 	server := &Server{
-		router: httprouter.New(),
-		log:    log,
+		router:   httprouter.New(),
+		log:      log,
+		db:       db,
+		ghClient: ghClient,
 	}
 	server.router.NotFound = http.HandlerFunc(server.notFoundHandler)
 	server.router.MethodNotAllowed = http.HandlerFunc(server.methodNotAllowedHandler)
 	server.router.GlobalOPTIONS = http.HandlerFunc(server.globalOptionsHandler)
 
 	server.router.GET("/api/v2/plugins", server.listPlugins)
-	//server.router.GET("/api/v2/plugins/:plugin", Index)
-	//server.router.GET("/api/v2/plugins/:plugin/:version", Index)
+
+	server.router.GET("/api/v2/plugins/:plugin", server.getPlugin)
+	server.router.GET("/api/v2/plugins/:plugin/:version", server.getPlugin)
+
+	server.router.PUT("/api/v2/plugins/:plugin", server.updatePlugin)
+	server.router.PUT("/api/v2/plugins/:plugin/:version", server.updatePlugin)
 	return server
 }
