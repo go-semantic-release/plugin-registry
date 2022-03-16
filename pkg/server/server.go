@@ -68,11 +68,12 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Ser
 	server.router.GlobalOPTIONS = http.HandlerFunc(server.globalOptionsHandler)
 
 	server.router.GET("/api/v2/plugins", server.listPlugins)
+	server.router.PUT("/api/v2/plugins", server.updateAllPlugins)
 
 	server.router.GET("/api/v2/plugins/:plugin", server.getPlugin)
-	server.router.GET("/api/v2/plugins/:plugin/:version", server.getPlugin)
-
 	server.router.PUT("/api/v2/plugins/:plugin", server.updatePlugin)
+
+	server.router.GET("/api/v2/plugins/:plugin/:version", server.getPlugin)
 	server.router.PUT("/api/v2/plugins/:plugin/:version", server.updatePlugin)
 	return server
 }

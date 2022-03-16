@@ -18,6 +18,19 @@ func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request, _ httproute
 	s.writeJSON(w, res)
 }
 
+func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	for _, p := range config.Plugins {
+		err := p.Update(r.Context(), s.db, s.ghClient, "")
+		if err != nil {
+			s.log.Error(err)
+			w.WriteHeader(500)
+			s.writeJSONError(w, "could not update plugin")
+			return
+		}
+	}
+	s.writeJSON(w, map[string]bool{"ok": true})
+}
+
 func (s *Server) getPluginFromRequest(w http.ResponseWriter, ps httprouter.Params) *plugin.Plugin {
 	pluginName := ps.ByName("plugin")
 	p, ok := config.PluginMap[pluginName]
