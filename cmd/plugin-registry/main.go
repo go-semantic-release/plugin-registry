@@ -29,7 +29,7 @@ func setupGitHubClient() (*github.Client, error) {
 	if !ok {
 		return nil, fmt.Errorf("GITHUB_TOKEN is missing")
 	}
-	oauthClient := oauth2.NewClient(nil, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}))
+	oauthClient := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}))
 	return github.NewClient(oauthClient), nil
 }
 
