@@ -37,6 +37,12 @@ func (s *Server) writeJSON(w io.Writer, d interface{}) {
 	}
 }
 
+func (s *Server) write500Error(w http.ResponseWriter, err error, msg string) {
+	s.log.Error(err)
+	w.WriteHeader(500)
+	s.writeJSONError(w, msg)
+}
+
 func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	s.writeJSONError(w, "not found")

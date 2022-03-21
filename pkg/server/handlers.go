@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
-	"github.com/go-semantic-release/plugin-registry/pkg/data"
 	"github.com/go-semantic-release/plugin-registry/pkg/plugin"
 	"github.com/julienschmidt/httprouter"
 )
@@ -22,9 +21,7 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request, _ http
 	for _, p := range config.Plugins {
 		err := p.Update(r.Context(), s.db, s.ghClient, "")
 		if err != nil {
-			s.log.Error(err)
-			w.WriteHeader(500)
-			s.writeJSONError(w, "could not update plugin")
+			s.write500Error(w, err, "could not update plugin")
 			return
 		}
 	}
@@ -49,9 +46,7 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 	if err := p.Update(r.Context(), s.db, s.ghClient, pluginVersion); err != nil {
-		s.log.Error(err)
-		w.WriteHeader(500)
-		s.writeJSONError(w, "could not update plugin")
+		s.write500Error(w, err, "could not update plugin")
 		return
 	}
 	s.writeJSON(w, map[string]bool{"ok": true})
@@ -66,14 +61,12 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request, ps httprouter
 	var err error
 	var res interface{}
 	if pluginVersion == "" {
-		res, err = data.GetPlugin(r.Context(), s.db, p.GetName())
+		res, err = p.Get(r.Context(), s.db)
 	} else {
-		res, err = data.GetPluginRelease(r.Context(), s.db, p.GetName(), pluginVersion)
+		res, err = p.GetRelease(r.Context(), s.db, pluginVersion)
 	}
 	if err != nil {
-		s.log.Error(err)
-		w.WriteHeader(500)
-		s.writeJSONError(w, "could not get plugin")
+		s.write500Error(w, err, "could not get plugin")
 		return
 	}
 	s.writeJSON(w, res)
