@@ -3,7 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -74,7 +74,7 @@ func fetchChecksumFile(ctx context.Context, url string) (map[string]string, erro
 	if err != nil {
 		return nil, err
 	}
-	checksums, err := ioutil.ReadAll(res.Body)
+	checksums, err := io.ReadAll(res.Body)
 	_ = res.Body.Close()
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ var osArchRe = regexp.MustCompile(`(?i)(aix|android|darwin|dragonfly|freebsd|hur
 
 func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[string]*data.PluginAsset, error) {
 	assets := make([]*data.PluginAsset, 0)
-	var checksumMap map[string]string = nil
+	var checksumMap map[string]string
 	for _, asset := range gha {
 		fn := asset.GetName()
 		asset.GetURL()

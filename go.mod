@@ -8,11 +8,13 @@ require (
 	github.com/google/go-github/v43 v43.0.0
 	github.com/julienschmidt/httprouter v1.3.1-0.20200921135023-fe77dd05ab5a
 	github.com/sirupsen/logrus v1.8.1
+	go.uber.org/ratelimit v0.2.0
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 )
 
 require (
 	cloud.google.com/go v0.97.0 // indirect
+	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect

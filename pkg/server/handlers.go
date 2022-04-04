@@ -18,6 +18,8 @@ func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request, _ httproute
 }
 
 func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	s.ghMutex.Lock()
+	defer s.ghMutex.Unlock()
 	for _, p := range config.Plugins {
 		err := p.Update(r.Context(), s.db, s.ghClient, "")
 		if err != nil {
@@ -40,6 +42,8 @@ func (s *Server) getPluginFromRequest(w http.ResponseWriter, ps httprouter.Param
 }
 
 func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	s.ghMutex.Lock()
+	defer s.ghMutex.Unlock()
 	pluginVersion := ps.ByName("version")
 	p := s.getPluginFromRequest(w, ps)
 	if p == nil {

@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/google/go-github/v43/github"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/ratelimit"
 )
 
 type Server struct {
@@ -16,6 +19,7 @@ type Server struct {
 	log      *logrus.Logger
 	db       *firestore.Client
 	ghClient *github.Client
+	ghMutex  sync.Mutex
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -62,6 +66,18 @@ func (s *Server) globalOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) rateLimitHandler(h httprouter.Handle, maxPerMinute int) httprouter.Handle {
+	rl := ratelimit.New(maxPerMinute, ratelimit.Per(time.Minute), ratelimit.WithoutSlack)
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		rl.Take()
+		if ctxErr := r.Context().Err(); ctxErr != nil {
+			s.write500Error(w, ctxErr, "internal server error")
+			return
+		}
+		h(w, r, ps)
+	}
+}
+
 func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Server {
 	server := &Server{
 		router:   httprouter.New(),
@@ -74,12 +90,12 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Ser
 	server.router.GlobalOPTIONS = http.HandlerFunc(server.globalOptionsHandler)
 
 	server.router.GET("/api/v2/plugins", server.listPlugins)
-	server.router.PUT("/api/v2/plugins", server.updateAllPlugins)
+	server.router.PUT("/api/v2/plugins", server.rateLimitHandler(server.updateAllPlugins, 1))
 
 	server.router.GET("/api/v2/plugins/:plugin", server.getPlugin)
-	server.router.PUT("/api/v2/plugins/:plugin", server.updatePlugin)
+	server.router.PUT("/api/v2/plugins/:plugin", server.rateLimitHandler(server.updatePlugin, 1))
 
 	server.router.GET("/api/v2/plugins/:plugin/:version", server.getPlugin)
-	server.router.PUT("/api/v2/plugins/:plugin/:version", server.updatePlugin)
+	server.router.PUT("/api/v2/plugins/:plugin/:version", server.rateLimitHandler(server.updatePlugin, 1))
 	return server
 }
