@@ -16,12 +16,20 @@ type Plugin struct {
 	Repo string
 }
 
-func (p *Plugin) GetName() string {
+type fsPluginData struct {
+	*data.Plugin
+	LatestReleaseRef *firestore.DocumentRef
+	// override fields from embedded struct and prevent them from being saved in firestore
+	LatestRelease *struct{} `firestore:",omitempty"`
+	Versions      *struct{} `firestore:",omitempty"`
+}
+
+func (p *Plugin) GetFullName() string {
 	return fmt.Sprintf("%s-%s", p.Type, p.Name)
 }
 
 func (p *Plugin) savePluginRelease(ctx context.Context, db *firestore.Client, pr *data.PluginRelease) error {
-	_, err := db.Collection("plugins").Doc(p.GetName()).Collection("versions").Doc(pr.Version).Set(ctx, pr)
+	_, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(pr.Version).Set(ctx, pr)
 	return err
 }
 
@@ -68,12 +76,14 @@ func (p *Plugin) getLatestReleaseFromGitHub(ctx context.Context, ghClient *githu
 	return lrVersion.String(), nil
 }
 
-func (p *Plugin) toPlugin() *data.Plugin {
-	return &data.Plugin{
-		FullName: p.GetName(),
-		Type:     p.Type,
-		Name:     p.Name,
-		URL:      fmt.Sprintf("https://github.com/%s", p.Repo),
+func (p *Plugin) toPlugin() *fsPluginData {
+	return &fsPluginData{
+		Plugin: &data.Plugin{
+			FullName: p.GetFullName(),
+			Type:     p.Type,
+			Name:     p.Name,
+			URL:      fmt.Sprintf("https://github.com/%s", p.Repo),
+		},
 	}
 }
 
@@ -100,18 +110,18 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 	}
 
 	plugin := p.toPlugin()
-	plugin.LatestReleaseRef = db.Doc(fmt.Sprintf("plugins/%s/versions/%s", p.GetName(), latestRelease))
+	plugin.LatestReleaseRef = db.Doc(fmt.Sprintf("plugins/%s/versions/%s", p.GetFullName(), latestRelease))
 	_, err = db.Collection("plugins").Doc(plugin.FullName).Set(ctx, plugin)
 	return err
 }
 
 func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, error) {
-	pluginRef := db.Collection("plugins").Doc(p.GetName())
+	pluginRef := db.Collection("plugins").Doc(p.GetFullName())
 	res, err := pluginRef.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var dp data.Plugin
+	dp := fsPluginData{Plugin: &data.Plugin{}}
 	if dErr := res.DataTo(&dp); dErr != nil {
 		return nil, dErr
 	}
@@ -119,12 +129,12 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, e
 	if err != nil {
 		return nil, err
 	}
+
 	var lr data.PluginRelease
 	if dErr := res.DataTo(&lr); dErr != nil {
 		return nil, dErr
 	}
-	dp.LatestReleaseRef = nil
-	dp.LatestRelease = &lr
+	dp.Plugin.LatestRelease = &lr
 
 	versionRefs, err := pluginRef.Collection("versions").DocumentRefs(ctx).GetAll()
 	if err != nil {
@@ -134,12 +144,12 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, e
 	for i, ref := range versionRefs {
 		versions[i] = ref.ID
 	}
-	dp.Versions = versions
-	return &dp, nil
+	dp.Plugin.Versions = versions
+	return dp.Plugin, nil
 }
 
 func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version string) (*data.PluginRelease, error) {
-	pluginRelease, err := db.Collection("plugins").Doc(p.GetName()).Collection("versions").Doc(version).Get(ctx)
+	pluginRelease, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(version).Get(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -148,4 +158,15 @@ func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version s
 		return nil, err
 	}
 	return &pr, nil
+}
+
+type Plugins []*Plugin
+
+func (l Plugins) Find(name string) *Plugin {
+	for _, p := range l {
+		if p.GetFullName() == name {
+			return p
+		}
+	}
+	return nil
 }

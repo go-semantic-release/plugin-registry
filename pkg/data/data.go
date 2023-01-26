@@ -2,18 +2,15 @@ package data
 
 import (
 	"time"
-
-	"cloud.google.com/go/firestore"
 )
 
 type Plugin struct {
-	FullName         string
-	Type             string
-	Name             string
-	URL              string
-	LatestReleaseRef *firestore.DocumentRef `json:",omitempty"`
-	LatestRelease    *PluginRelease         `firestore:",omitempty"`
-	Versions         []string               `firestore:",omitempty"`
+	FullName      string
+	Type          string
+	Name          string
+	URL           string
+	LatestRelease *PluginRelease
+	Versions      []string
 }
 
 type PluginRelease struct {
