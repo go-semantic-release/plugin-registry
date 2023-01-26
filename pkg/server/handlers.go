@@ -23,7 +23,7 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request, _ http
 	for _, p := range config.Plugins {
 		err := p.Update(r.Context(), s.db, s.ghClient, "")
 		if err != nil {
-			s.write500Error(w, err, "could not update plugin")
+			s.writeJSONError(w, http.StatusInternalServerError, err, "could not update plugin")
 			return
 		}
 	}
@@ -34,8 +34,7 @@ func (s *Server) getPluginFromRequest(w http.ResponseWriter, ps httprouter.Param
 	pluginName := ps.ByName("plugin")
 	p := config.Plugins.Find(pluginName)
 	if p == nil {
-		w.WriteHeader(404)
-		s.writeJSONError(w, fmt.Sprintf("plugin %s not found", pluginName))
+		s.writeJSONError(w, 404, nil, fmt.Sprintf("plugin %s not found", pluginName))
 		return nil
 	}
 	return p
@@ -47,10 +46,11 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request, ps httprou
 	pluginVersion := ps.ByName("version")
 	p := s.getPluginFromRequest(w, ps)
 	if p == nil {
+		// getPluginFromRequest already wrote the error
 		return
 	}
 	if err := p.Update(r.Context(), s.db, s.ghClient, pluginVersion); err != nil {
-		s.write500Error(w, err, "could not update plugin")
+		s.writeJSONError(w, http.StatusInternalServerError, err, "could not update plugin")
 		return
 	}
 	s.writeJSON(w, map[string]bool{"ok": true})
@@ -71,7 +71,7 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request, ps httprouter
 		res, err = p.GetRelease(r.Context(), s.db, pluginVersion)
 	}
 	if err != nil {
-		s.write500Error(w, err, "could not get plugin")
+		s.writeJSONError(w, http.StatusInternalServerError, err, "could not get plugin")
 		return
 	}
 	s.writeJSON(w, res)

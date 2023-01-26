@@ -1,5 +1,9 @@
 .idea/
 gsr.json
 .envrc
+
 plugin-registry
 !plugin-registry/
+
+pkg/legacy/v1/plugins.json
+pkg/legacy/v1/plugins/

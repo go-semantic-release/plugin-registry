@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	legacyV1 "github.com/go-semantic-release/plugin-registry/pkg/legacy/v1"
 	"github.com/google/go-github/v43/github"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
@@ -30,10 +31,6 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	s.router.ServeHTTP(writer, request)
 }
 
-func (s *Server) writeJSONError(w io.Writer, e string) {
-	s.writeJSON(w, map[string]string{"error": e})
-}
-
 func (s *Server) writeJSON(w io.Writer, d any) {
 	err := json.NewEncoder(w).Encode(d)
 	if err != nil {
@@ -41,20 +38,20 @@ func (s *Server) writeJSON(w io.Writer, d any) {
 	}
 }
 
-func (s *Server) write500Error(w http.ResponseWriter, err error, msg string) {
-	s.log.Error(err)
-	w.WriteHeader(500)
-	s.writeJSONError(w, msg)
+func (s *Server) writeJSONError(w http.ResponseWriter, statusCode int, err error, msg string) {
+	if err != nil {
+		s.log.Errorf("ERROR(%d): %v", statusCode, err)
+	}
+	w.WriteHeader(statusCode)
+	s.writeJSON(w, map[string]string{"error": msg})
 }
 
 func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
-	s.writeJSONError(w, "not found")
+	s.writeJSONError(w, http.StatusNotFound, nil, "not found")
 }
 
 func (s *Server) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusMethodNotAllowed)
-	s.writeJSONError(w, "method now allowed")
+	s.writeJSONError(w, http.StatusMethodNotAllowed, nil, "method now allowed")
 }
 
 func (s *Server) globalOptionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +68,7 @@ func (s *Server) rateLimitHandler(h httprouter.Handle, maxPerMinute int) httprou
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		rl.Take()
 		if ctxErr := r.Context().Err(); ctxErr != nil {
-			s.write500Error(w, ctxErr, "internal server error")
+			s.writeJSONError(w, http.StatusInternalServerError, ctxErr, "internal server error")
 			return
 		}
 		h(w, r, ps)
@@ -88,6 +85,9 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Ser
 	server.router.NotFound = http.HandlerFunc(server.notFoundHandler)
 	server.router.MethodNotAllowed = http.HandlerFunc(server.methodNotAllowedHandler)
 	server.router.GlobalOPTIONS = http.HandlerFunc(server.globalOptionsHandler)
+
+	// serve legacy API
+	server.router.ServeFiles("/api/v1/*filepath", http.FS(legacyV1.PluginIndex))
 
 	server.router.GET("/api/v2/plugins", server.listPlugins)
 	// TODO: only enable this endpoint for authenticated users
