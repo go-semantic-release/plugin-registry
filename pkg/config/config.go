@@ -65,11 +65,10 @@ var Plugins = []*plugin.Plugin{
 	},
 }
 
-var PluginMap map[string]*plugin.Plugin
-
-func init() {
-	PluginMap = make(map[string]*plugin.Plugin)
+var PluginMap = func() map[string]*plugin.Plugin {
+	pMap := make(map[string]*plugin.Plugin)
 	for _, p := range Plugins {
-		PluginMap[p.GetName()] = p
+		pMap[p.GetName()] = p
 	}
-}
+	return pMap
+}()

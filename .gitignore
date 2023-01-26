@@ -1,3 +1,5 @@
 .idea/
 gsr.json
 .envrc
+plugin-registry
+!plugin-registry/

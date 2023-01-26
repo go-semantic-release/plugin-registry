@@ -112,16 +112,16 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, e
 		return nil, err
 	}
 	var dp data.Plugin
-	if err := res.DataTo(&dp); err != nil {
-		return nil, err
+	if dErr := res.DataTo(&dp); dErr != nil {
+		return nil, dErr
 	}
 	res, err = dp.LatestReleaseRef.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var lr data.PluginRelease
-	if err := res.DataTo(&lr); err != nil {
-		return nil, err
+	if dErr := res.DataTo(&lr); dErr != nil {
+		return nil, dErr
 	}
 	dp.LatestReleaseRef = nil
 	dp.LatestRelease = &lr

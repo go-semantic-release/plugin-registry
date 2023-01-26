@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -71,10 +72,10 @@ func run(log *logrus.Logger) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err == context.DeadlineExceeded {
+	if err := srv.Shutdown(ctx); errors.Is(err, context.DeadlineExceeded) {
 		log.Println("closing server...")
-		if err := srv.Close(); err != nil {
-			return err
+		if closeErr := srv.Close(); closeErr != nil {
+			return closeErr
 		}
 	} else if err != nil {
 		return err

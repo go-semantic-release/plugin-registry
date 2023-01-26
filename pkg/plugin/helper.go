@@ -49,7 +49,7 @@ func getAllGitHubReleases(ctx context.Context, ghClient *github.Client, fullRepo
 	return ret, nil
 }
 
-func getGitHubRelease(ctx context.Context, ghClient *github.Client, fullRepo string, tag string) (*github.RepositoryRelease, error) {
+func getGitHubRelease(ctx context.Context, ghClient *github.Client, fullRepo, tag string) (*github.RepositoryRelease, error) {
 	owner, repo := getOwnerRepo(fullRepo)
 	release, _, err := ghClient.Repositories.GetReleaseByTag(ctx, owner, repo, tag)
 	if err != nil {
