@@ -34,7 +34,7 @@ func (s *Server) writeJSONError(w io.Writer, e string) {
 	s.writeJSON(w, map[string]string{"error": e})
 }
 
-func (s *Server) writeJSON(w io.Writer, d interface{}) {
+func (s *Server) writeJSON(w io.Writer, d any) {
 	err := json.NewEncoder(w).Encode(d)
 	if err != nil {
 		s.log.Error(err)
@@ -90,6 +90,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client) *Ser
 	server.router.GlobalOPTIONS = http.HandlerFunc(server.globalOptionsHandler)
 
 	server.router.GET("/api/v2/plugins", server.listPlugins)
+	// TODO: only enable this endpoint for authenticated users
 	server.router.PUT("/api/v2/plugins", server.rateLimitHandler(server.updateAllPlugins, 1))
 
 	server.router.GET("/api/v2/plugins/:plugin", server.getPlugin)
