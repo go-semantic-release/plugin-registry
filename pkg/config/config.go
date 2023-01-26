@@ -2,7 +2,7 @@ package config
 
 import "github.com/go-semantic-release/plugin-registry/pkg/plugin"
 
-var Plugins = []*plugin.Plugin{
+var Plugins = plugin.Plugins{
 	{
 		Type: "provider",
 		Name: "github",
@@ -63,12 +63,9 @@ var Plugins = []*plugin.Plugin{
 		Name: "goreleaser",
 		Repo: "go-semantic-release/hooks-goreleaser",
 	},
+	{
+		Type: "hooks",
+		Name: "npm-binary-releaser",
+		Repo: "go-semantic-release/hooks-npm-binary-releaser",
+	},
 }
-
-var PluginMap = func() map[string]*plugin.Plugin {
-	pMap := make(map[string]*plugin.Plugin)
-	for _, p := range Plugins {
-		pMap[p.GetName()] = p
-	}
-	return pMap
-}()
