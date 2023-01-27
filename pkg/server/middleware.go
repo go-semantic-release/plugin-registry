@@ -27,3 +27,15 @@ func (s *Server) logMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				s.log.Errorf("panic: %v", rec)
+				s.writeJSONError(w, r, http.StatusInternalServerError, fmt.Errorf("internal server error"))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}

@@ -49,7 +49,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, admi
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
 	router.Use(server.logMiddleware)
-	router.Use(middleware.Recoverer)
+	router.Use(server.recoverMiddleware)
 
 	router.Use(middleware.Timeout(60 * time.Second))
 
@@ -62,13 +62,13 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, admi
 	router.Route("/api/v2/plugins", func(r chi.Router) {
 		r.Get("/", server.listPlugins)
 		r.Get("/{plugin}", server.getPlugin)
-		r.Get("/{plugin}/{version}", server.getPlugin)
+		r.Get("/{plugin}/versions/{version}", server.getPlugin)
 
 		// routes to update the plugin index
 		r.With(server.authMiddleware).Group(func(r chi.Router) {
 			r.Put("/", server.updateAllPlugins)
 			r.Put("/{plugin}", server.updatePlugin)
-			r.Put("/{plugin}/{version}", server.updatePlugin)
+			r.Put("/{plugin}/versions/{version}", server.updatePlugin)
 		})
 	})
 
