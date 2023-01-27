@@ -5,8 +5,8 @@ go 1.19
 require (
 	cloud.google.com/go/firestore v1.9.0
 	github.com/Masterminds/semver/v3 v3.2.0
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/go-github/v50 v50.0.0
-	github.com/julienschmidt/httprouter v1.3.1-0.20200921135023-fe77dd05ab5a
 	github.com/migueleliasweb/go-github-mock v0.0.15
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
