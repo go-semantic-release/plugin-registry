@@ -34,22 +34,29 @@ func setupGitHubClient() (*github.Client, error) {
 	return github.NewClient(oauthClient), nil
 }
 
+func getServerAddr() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return os.Getenv("BIND_ADDRESS") + ":" + port
+}
+
 func run(log *logrus.Logger) error {
-	log.Println("setting up GitHub client...")
+	log.Info("setting up GitHub client...")
 	ghClient, err := setupGitHubClient()
 	if err != nil {
 		return err
 	}
 
-	log.Println("connecting to database...")
+	log.Info("connecting to database...")
 	db, err := firestore.NewClient(context.Background(), "go-semantic-release")
 	if err != nil {
 		return err
 	}
 
-	log.Println("starting server...")
 	srv := &http.Server{
-		Addr:    "127.0.0.1:8080",
+		Addr:    getServerAddr(),
 		Handler: server.New(log, db, ghClient, os.Getenv("ADMIN_ACCESS_TOKEN")),
 	}
 	go func() {
@@ -63,24 +70,24 @@ func run(log *logrus.Logger) error {
 	<-ctx.Done()
 	stop()
 
-	log.Println("closing database...")
+	log.Info("closing database...")
 	if err := db.Close(); err != nil {
 		log.Error(err)
 	}
 
-	log.Println("stopping server...")
+	log.Info("stopping server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); errors.Is(err, context.DeadlineExceeded) {
-		log.Println("closing server...")
+		log.Info("closing server...")
 		if closeErr := srv.Close(); closeErr != nil {
 			return closeErr
 		}
 	} else if err != nil {
 		return err
 	}
-	log.Println("server stopped!")
+	log.Info("server stopped!")
 	return nil
 }
 
