@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/go-semantic-release/plugin-registry/pkg/data"
+	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 	"github.com/google/go-github/v50/github"
 )
 
@@ -97,8 +97,8 @@ func fetchChecksumFile(ctx context.Context, url string) (map[string]string, erro
 
 var osArchRe = regexp.MustCompile(`(?i)(aix|android|darwin|dragonfly|freebsd|hurd|illumos|js|linux|nacl|netbsd|openbsd|plan9|solaris|windows|zos)(_|-)(386|amd64|amd64p32|arm|armbe|arm64|arm64be|ppc64|ppc64le|mips|mipsle|mips64|mips64le|mips64p32|mips64p32le|ppc|riscv|riscv64|s390|s390x|sparc|sparc64|wasm)(\.exe)?$`)
 
-func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[string]*data.PluginAsset, error) {
-	assets := make([]*data.PluginAsset, 0)
+func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[string]*registry.PluginAsset, error) {
+	assets := make([]*registry.PluginAsset, 0)
 	var checksumMap map[string]string
 	for _, asset := range gha {
 		fn := asset.GetName()
@@ -110,13 +110,13 @@ func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[strin
 			checksumMap = csMap
 			continue
 		}
-		assets = append(assets, &data.PluginAsset{
+		assets = append(assets, &registry.PluginAsset{
 			FileName: fn,
 			URL:      asset.GetBrowserDownloadURL(),
 		})
 	}
 
-	ret := make(map[string]*data.PluginAsset)
+	ret := make(map[string]*registry.PluginAsset)
 	for _, pa := range assets {
 		osArch := osArchRe.FindAllStringSubmatch(pa.FileName, -1)
 		if len(osArch) < 1 || len(osArch[0]) < 4 {
@@ -133,13 +133,13 @@ func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[strin
 	return ret, nil
 }
 
-func toPluginRelease(ctx context.Context, ghr *github.RepositoryRelease) (*data.PluginRelease, error) {
+func toPluginRelease(ctx context.Context, ghr *github.RepositoryRelease) (*registry.PluginRelease, error) {
 	assets, err := getPluginAssets(ctx, ghr.Assets)
 	if err != nil {
 		return nil, err
 	}
 
-	return &data.PluginRelease{
+	return &registry.PluginRelease{
 		Version:    semver.MustParse(ghr.GetTagName()).String(),
 		Prerelease: ghr.GetPrerelease(),
 		CreatedAt:  ghr.GetCreatedAt().Time,

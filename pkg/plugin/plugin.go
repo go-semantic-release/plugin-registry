@@ -6,7 +6,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/Masterminds/semver/v3"
-	"github.com/go-semantic-release/plugin-registry/pkg/data"
+	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 	"github.com/google/go-github/v50/github"
 )
 
@@ -17,7 +17,7 @@ type Plugin struct {
 }
 
 type fsPluginData struct {
-	*data.Plugin
+	*registry.Plugin
 	LatestReleaseRef *firestore.DocumentRef
 	// override fields from embedded struct and prevent them from being saved in firestore
 	LatestRelease *struct{} `firestore:",omitempty"`
@@ -28,7 +28,7 @@ func (p *Plugin) GetFullName() string {
 	return fmt.Sprintf("%s-%s", p.Type, p.Name)
 }
 
-func (p *Plugin) savePluginRelease(ctx context.Context, db *firestore.Client, pr *data.PluginRelease) error {
+func (p *Plugin) savePluginRelease(ctx context.Context, db *firestore.Client, pr *registry.PluginRelease) error {
 	_, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(pr.Version).Set(ctx, pr)
 	return err
 }
@@ -78,7 +78,7 @@ func (p *Plugin) getLatestReleaseFromGitHub(ctx context.Context, ghClient *githu
 
 func (p *Plugin) toPlugin() *fsPluginData {
 	return &fsPluginData{
-		Plugin: &data.Plugin{
+		Plugin: &registry.Plugin{
 			FullName: p.GetFullName(),
 			Type:     p.Type,
 			Name:     p.Name,
@@ -115,13 +115,13 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 	return err
 }
 
-func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, error) {
+func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*registry.Plugin, error) {
 	pluginRef := db.Collection("plugins").Doc(p.GetFullName())
 	res, err := pluginRef.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	dp := fsPluginData{Plugin: &data.Plugin{}}
+	dp := fsPluginData{Plugin: &registry.Plugin{}}
 	if dErr := res.DataTo(&dp); dErr != nil {
 		return nil, dErr
 	}
@@ -130,7 +130,7 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, e
 		return nil, err
 	}
 
-	var lr data.PluginRelease
+	var lr registry.PluginRelease
 	if dErr := res.DataTo(&lr); dErr != nil {
 		return nil, dErr
 	}
@@ -148,12 +148,12 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*data.Plugin, e
 	return dp.Plugin, nil
 }
 
-func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version string) (*data.PluginRelease, error) {
+func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version string) (*registry.PluginRelease, error) {
 	pluginRelease, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(version).Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var pr data.PluginRelease
+	var pr registry.PluginRelease
 	if err := pluginRelease.DataTo(&pr); err != nil {
 		return nil, err
 	}
