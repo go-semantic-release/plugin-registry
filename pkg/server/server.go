@@ -63,6 +63,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, admi
 		r.Get("/", server.listPlugins)
 		r.Get("/{plugin}", server.getPlugin)
 		r.Get("/{plugin}/versions/{version}", server.getPlugin)
+		r.Post("/_batch", server.batchGetPlugins)
 
 		// routes to update the plugin index
 		r.With(server.authMiddleware).Group(func(r chi.Router) {

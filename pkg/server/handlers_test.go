@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
@@ -134,6 +137,68 @@ func saveDoc(fsClient *firestore.Client, collection, doc string, data map[string
 	return err
 }
 
+func createPluginDoc(fsClient *firestore.Client, fullName, latestRelease string) error {
+	pluginType, name, _ := strings.Cut(fullName, "-")
+	err := saveDoc(fsClient, "plugins", fullName, map[string]any{
+		"FullName":         fullName,
+		"Type":             pluginType,
+		"Name":             name,
+		"URL":              fmt.Sprintf("https://github.com/my-org/%s", fullName),
+		"LatestReleaseRef": fsClient.Doc(fmt.Sprintf("plugins/%s/versions/%s", fullName, latestRelease)),
+	})
+	if err != nil {
+		return err
+	}
+
+	versionsCollection := fmt.Sprintf("plugins/%s/versions", fullName)
+
+	for _, version := range []string{"1.0.0", "1.1.0", "1.2.0", "2.0.0", "3.0.0", latestRelease} {
+		err = saveDoc(fsClient, versionsCollection, version, map[string]any{
+			"Version":    version,
+			"Prerelease": false,
+			"CreatedAt":  time.Now(),
+			"Assets": map[string]map[string]string{
+				"darwin/amd64": {
+					"FileName": fullName + "-darwin-amd64",
+					"URL":      "https//download.example.com/" + fullName + "-darwin-amd64",
+					"OS":       "darwin",
+					"Arch":     "amd64",
+					"Checksum": "1234",
+				},
+				"linux/amd64": {
+					"FileName": fullName + "-linux-amd64",
+					"URL":      "https//download.example.com/" + fullName + "-linux-amd64",
+					"OS":       "linux",
+					"Arch":     "amd64",
+					"Checksum": "5678",
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func bootstrapDatabase(fsClient *firestore.Client) error {
+	err := createPluginDoc(fsClient, "provider-git", "3.0.0")
+	if err != nil {
+		return err
+	}
+	err = createPluginDoc(fsClient, "condition-github", "4.0.0")
+	if err != nil {
+		return err
+	}
+
+	err = createPluginDoc(fsClient, "hooks-example", "5.0.0")
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
 func TestGetPlugin(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
@@ -141,35 +206,14 @@ func TestGetPlugin(t *testing.T) {
 	s, fsClient, err := newTestServer()
 	require.NoError(t, err)
 
-	require.NoError(t, saveDoc(fsClient, "plugins", "provider-git", map[string]any{
-		"FullName":         "provider-git",
-		"Type":             "provider",
-		"Name":             "git",
-		"LatestReleaseRef": fsClient.Doc("plugins/provider-git/versions/1.1.0"),
-	}))
-	require.NoError(t, saveDoc(fsClient, "plugins/provider-git/versions", "1.0.0", map[string]any{
-		"Version": "1.0.0",
-	}))
-	require.NoError(t, saveDoc(fsClient, "plugins/provider-git/versions", "1.1.0", map[string]any{
-		"Version": "1.1.0",
-		"Type":    "provider",
-		"Assets": map[string]map[string]string{
-			"darwin/amd64": {
-				"Arch":     "amd64",
-				"OS":       "darwin",
-				"FileName": "provider-git-darwin-amd64",
-				"Checksum": "1234",
-				"URL":      "https//download.example.com/provider-git",
-			},
-		},
-	}))
+	require.NoError(t, bootstrapDatabase(fsClient))
 
 	rr := sendRequest(s, "GET", "/api/v2/plugins/provider-git", nil)
 	require.Equal(t, http.StatusOK, rr.Code)
 	var plugin registry.Plugin
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &plugin))
-	require.Len(t, plugin.Versions, 2)
-	require.Equal(t, "1.1.0", plugin.LatestRelease.Version)
+	require.Len(t, plugin.Versions, 5)
+	require.Equal(t, "3.0.0", plugin.LatestRelease.Version)
 	require.Equal(t, "provider-git-darwin-amd64", plugin.LatestRelease.Assets["darwin/amd64"].FileName)
 }
 

@@ -1,11 +1,13 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
+	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 )
 
 func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request) {
@@ -69,4 +71,17 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeJSON(w, res)
+}
+
+func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
+	var batchRequest registry.BatchRequest
+	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+		s.writeJSONError(w, r, http.StatusBadRequest, err, "could not decode request")
+		return
+	}
+	if len(batchRequest.Plugins) == 0 {
+		s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("no plugins provided"))
+		return
+	}
+	// TODO
 }

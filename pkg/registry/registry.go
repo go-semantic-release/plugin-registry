@@ -27,3 +27,16 @@ type PluginAsset struct {
 	Arch     string
 	Checksum string
 }
+
+type BatchPluginConstraint struct {
+	FullName          string
+	VersionConstraint string
+}
+
+type BatchRequest struct {
+	Plugins []BatchPluginConstraint
+}
+
+type BatchResponse struct {
+	Plugins map[string]*Plugin
+}

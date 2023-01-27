@@ -28,8 +28,20 @@ func (p *Plugin) GetFullName() string {
 	return fmt.Sprintf("%s-%s", p.Type, p.Name)
 }
 
+func (p *Plugin) getDocRef(db *firestore.Client) *firestore.DocumentRef {
+	return db.Collection("plugins").Doc(p.GetFullName())
+}
+
+func (p *Plugin) getVersionsColRef(db *firestore.Client) *firestore.CollectionRef {
+	return p.getDocRef(db).Collection("versions")
+}
+
+func (p *Plugin) getVersionDocRef(db *firestore.Client, version string) *firestore.DocumentRef {
+	return p.getVersionsColRef(db).Doc(version)
+}
+
 func (p *Plugin) savePluginRelease(ctx context.Context, db *firestore.Client, pr *registry.PluginRelease) error {
-	_, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(pr.Version).Set(ctx, pr)
+	_, err := p.getVersionDocRef(db, pr.Version).Set(ctx, pr)
 	return err
 }
 
@@ -111,12 +123,24 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 
 	plugin := p.toPlugin()
 	plugin.LatestReleaseRef = db.Doc(fmt.Sprintf("plugins/%s/versions/%s", p.GetFullName(), latestRelease))
-	_, err = db.Collection("plugins").Doc(plugin.FullName).Set(ctx, plugin)
+	_, err = p.getDocRef(db).Set(ctx, plugin)
 	return err
 }
 
+func (p *Plugin) GetVersions(ctx context.Context, db *firestore.Client) ([]string, error) {
+	versionRefs, err := p.getVersionsColRef(db).DocumentRefs(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+	versions := make([]string, len(versionRefs))
+	for i, ref := range versionRefs {
+		versions[i] = ref.ID
+	}
+	return versions, nil
+}
+
 func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*registry.Plugin, error) {
-	pluginRef := db.Collection("plugins").Doc(p.GetFullName())
+	pluginRef := p.getDocRef(db)
 	res, err := pluginRef.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -136,20 +160,16 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*registry.Plugi
 	}
 	dp.Plugin.LatestRelease = &lr
 
-	versionRefs, err := pluginRef.Collection("versions").DocumentRefs(ctx).GetAll()
+	versions, err := p.GetVersions(ctx, db)
 	if err != nil {
 		return nil, err
-	}
-	versions := make([]string, len(versionRefs))
-	for i, ref := range versionRefs {
-		versions[i] = ref.ID
 	}
 	dp.Plugin.Versions = versions
 	return dp.Plugin, nil
 }
 
 func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version string) (*registry.PluginRelease, error) {
-	pluginRelease, err := db.Collection("plugins").Doc(p.GetFullName()).Collection("versions").Doc(version).Get(ctx)
+	pluginRelease, err := p.getVersionDocRef(db, version).Get(ctx)
 	if err != nil {
 		return nil, err
 	}
