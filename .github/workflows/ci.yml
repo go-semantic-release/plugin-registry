@@ -16,6 +16,8 @@ jobs:
           go-version: '1.19'
       - run: go generate ./...
       - uses: golangci/golangci-lint-action@v3
+        with:
+          skip-pkg-cache: true
   test:
     runs-on: ubuntu-latest
     needs: lint
