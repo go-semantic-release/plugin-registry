@@ -7,11 +7,16 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-semantic-release/plugin-registry/pkg/data"
 	"github.com/google/go-github/v50/github"
 )
+
+var httpClient = &http.Client{
+	Timeout: time.Minute,
+}
 
 func getOwnerRepo(fullRepo string) (string, string) {
 	owner, repo, found := strings.Cut(fullRepo, "/")
@@ -60,7 +65,7 @@ func getGitHubRelease(ctx context.Context, ghClient *github.Client, fullRepo, ta
 		return nil, fmt.Errorf("release is a draft")
 	}
 	if _, err := semver.NewVersion(release.GetTagName()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("release is not a valid semver version: %w", err)
 	}
 	return release, nil
 }
@@ -71,7 +76,7 @@ func fetchChecksumFile(ctx context.Context, url string) (map[string]string, erro
 	if err != nil {
 		return nil, err
 	}
-	res, err := http.DefaultClient.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +102,6 @@ func getPluginAssets(ctx context.Context, gha []*github.ReleaseAsset) (map[strin
 	var checksumMap map[string]string
 	for _, asset := range gha {
 		fn := asset.GetName()
-		asset.GetURL()
 		if checksumMap == nil && asset.GetSize() <= 4096 && strings.Contains(strings.ToLower(fn), "checksums.txt") {
 			csMap, err := fetchChecksumFile(ctx, asset.GetBrowserDownloadURL())
 			if err != nil {
