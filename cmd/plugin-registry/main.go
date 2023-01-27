@@ -12,7 +12,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-semantic-release/plugin-registry/pkg/server"
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -50,7 +50,7 @@ func run(log *logrus.Logger) error {
 	log.Println("starting server...")
 	srv := &http.Server{
 		Addr:    "127.0.0.1:8080",
-		Handler: server.New(log, db, ghClient),
+		Handler: server.New(log, db, ghClient, os.Getenv("ADMIN_ACCESS_TOKEN")),
 	}
 	go func() {
 		log.Printf("listening on %s", srv.Addr)

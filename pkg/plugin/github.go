@@ -10,15 +10,16 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-semantic-release/plugin-registry/pkg/data"
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v50/github"
 )
 
 func getOwnerRepo(fullRepo string) (string, string) {
-	split := strings.SplitN(fullRepo, "/", 2)
-	if len(split) < 2 {
+	owner, repo, found := strings.Cut(fullRepo, "/")
+	if !found {
 		return "", ""
 	}
-	return split[0], split[1]
+
+	return owner, repo
 }
 
 func getAllGitHubReleases(ctx context.Context, ghClient *github.Client, fullRepo string) ([]*github.RepositoryRelease, error) {

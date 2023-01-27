@@ -7,7 +7,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-semantic-release/plugin-registry/pkg/data"
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v50/github"
 )
 
 type Plugin struct {
