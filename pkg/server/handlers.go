@@ -76,12 +76,12 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, res)
 }
 
-func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (registry.BatchPluginResponses, error) {
+func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (registry.BatchResponsePlugins, error) {
 	err := batchRequest.Validate()
 	if err != nil {
 		return nil, err
 	}
-	pluginResponses := make(registry.BatchPluginResponses, 0)
+	pluginResponses := make(registry.BatchResponsePlugins, 0)
 	for _, pluginReq := range batchRequest.Plugins {
 		if !strings.Contains(pluginReq.FullName, "-") {
 			return nil, fmt.Errorf("plugin %s has an invalid name", pluginReq.FullName)
@@ -107,12 +107,15 @@ func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (regi
 			return nil, fmt.Errorf("plugin %s does not exist", pluginReq.FullName)
 		}
 
-		pluginResponses = append(pluginResponses, registry.NewBatchPluginResponse(pluginReq))
+		pluginResponses = append(pluginResponses, registry.NewBatchResponsePlugin(pluginReq))
 	}
 	return pluginResponses, nil
 }
 
 func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+
 	batchRequest := new(registry.BatchRequest)
 	if err := json.NewDecoder(r.Body).Decode(batchRequest); err != nil {
 		s.writeJSONError(w, r, http.StatusBadRequest, err, "could not decode request")
@@ -126,6 +129,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	batchResponse := registry.NewBatchResponse(batchRequest, pluginResponses)
+	// TODO: use batchResponse.Hash() as cache key
 
 	for _, pluginResponse := range batchResponse.Plugins {
 		p := config.Plugins.Find(pluginResponse.FullName)
@@ -145,8 +149,9 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		pluginResponse.URL = foundAsset.URL
 		pluginResponse.Checksum = foundAsset.Checksum
 	}
-
 	batchResponse.Hash()
+
+	// TODO: check if hash is in cache, if not, download all assets and save as tgz
 
 	s.writeJSON(w, batchResponse)
 }

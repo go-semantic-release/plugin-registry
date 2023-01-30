@@ -34,72 +34,15 @@ type PluginAsset struct {
 	Checksum string
 }
 
-type BatchPluginRequest struct {
+type BatchRequestPlugin struct {
 	FullName          string
 	VersionConstraint string
 }
 
-type BatchPluginResponse struct {
-	*BatchPluginRequest
-	Version  string
-	FileName string
-	URL      string
-	Checksum string
-}
-
-func NewBatchPluginResponse(req *BatchPluginRequest) *BatchPluginResponse {
-	return &BatchPluginResponse{
-		BatchPluginRequest: &BatchPluginRequest{
-			FullName:          strings.ToLower(req.FullName),
-			VersionConstraint: req.VersionConstraint,
-		},
-	}
-}
-
-func (b *BatchPluginResponse) String() string {
-	return fmt.Sprintf("%s@%s (version=%s) (checksum=%s)", b.FullName, b.VersionConstraint, b.Version, b.Checksum)
-}
-
-func (b *BatchPluginResponse) Hash() []byte {
-	h := sha512.New512_256()
-	_, _ = io.WriteString(h, b.String())
-	return h.Sum(nil)
-}
-
-type BatchPluginResponses []*BatchPluginResponse
-
-func (b BatchPluginResponses) Len() int { return len(b) }
-
-func (b BatchPluginResponses) Less(i, j int) bool {
-	return strings.Compare(b[i].FullName, b[j].FullName) < 0
-}
-
-func (b BatchPluginResponses) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-
-func (b BatchPluginResponses) Hash() []byte {
-	h := sha512.New512_256()
-	for _, c := range b {
-		_, _ = h.Write(c.Hash())
-	}
-	return h.Sum(nil)
-}
-
-func (b BatchPluginResponses) Has(fullName string) bool {
-	for _, c := range b {
-		if c.FullName == strings.ToLower(fullName) {
-			return true
-		}
-	}
-	return false
-}
-
 type BatchRequest struct {
-	OS         string
-	Arch       string
-	Plugins    []*BatchPluginRequest
-	isEmbedded bool // used to prevent validation
+	OS      string
+	Arch    string
+	Plugins []*BatchRequestPlugin
 }
 
 func (b *BatchRequest) GetOSArch() string {
@@ -107,10 +50,6 @@ func (b *BatchRequest) GetOSArch() string {
 }
 
 func (b *BatchRequest) Validate() error {
-	if b.isEmbedded {
-		panic("validation of the embedded batch request is not allowed")
-	}
-
 	if b.OS == "" || b.Arch == "" {
 		return fmt.Errorf("os and arch are required")
 	}
@@ -125,23 +64,83 @@ func (b *BatchRequest) Validate() error {
 	return nil
 }
 
+type BatchResponsePlugin struct {
+	*BatchRequestPlugin
+	Version  string
+	FileName string
+	URL      string
+	Checksum string
+}
+
+func NewBatchResponsePlugin(req *BatchRequestPlugin) *BatchResponsePlugin {
+	return &BatchResponsePlugin{
+		BatchRequestPlugin: &BatchRequestPlugin{
+			FullName:          strings.ToLower(req.FullName),
+			VersionConstraint: req.VersionConstraint,
+		},
+	}
+}
+
+func (b *BatchResponsePlugin) String() string {
+	return fmt.Sprintf("%s@%s (version=%s) (checksum=%s)", b.FullName, b.VersionConstraint, b.Version, b.Checksum)
+}
+
+func (b *BatchResponsePlugin) Hash() []byte {
+	h := sha512.New512_256()
+	_, _ = io.WriteString(h, b.String())
+	return h.Sum(nil)
+}
+
+type BatchResponsePlugins []*BatchResponsePlugin
+
+func (b BatchResponsePlugins) Len() int {
+	return len(b)
+}
+
+func (b BatchResponsePlugins) Less(i, j int) bool {
+	return strings.Compare(b[i].FullName, b[j].FullName) < 0
+}
+
+func (b BatchResponsePlugins) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b BatchResponsePlugins) Hash() []byte {
+	h := sha512.New512_256()
+	for _, c := range b {
+		_, _ = h.Write(c.Hash())
+	}
+	return h.Sum(nil)
+}
+
+func (b BatchResponsePlugins) Has(fullName string) bool {
+	for _, c := range b {
+		if c.FullName == strings.ToLower(fullName) {
+			return true
+		}
+	}
+	return false
+}
+
 type BatchResponse struct {
-	*BatchRequest
-	Plugins      BatchPluginResponses
+	OS           string
+	Arch         string
+	Plugins      BatchResponsePlugins
 	DownloadHash string
 	DownloadURL  string
 }
 
-func NewBatchResponse(req *BatchRequest, plugins BatchPluginResponses) *BatchResponse {
+func NewBatchResponse(req *BatchRequest, plugins BatchResponsePlugins) *BatchResponse {
 	sort.Sort(plugins)
 	return &BatchResponse{
-		BatchRequest: &BatchRequest{
-			OS:         strings.ToLower(req.OS),
-			Arch:       strings.ToLower(req.Arch),
-			isEmbedded: true,
-		},
+		OS:      strings.ToLower(req.OS),
+		Arch:    strings.ToLower(req.Arch),
 		Plugins: plugins,
 	}
+}
+
+func (b *BatchResponse) GetOSArch() string {
+	return fmt.Sprintf("%s/%s", b.OS, b.Arch)
 }
 
 func (b *BatchResponse) Hash() []byte {

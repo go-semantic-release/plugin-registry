@@ -272,7 +272,7 @@ func TestBatchEndpoint(t *testing.T) {
 	batchRequest := &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "condition-github", VersionConstraint: "latest"},
 			{FullName: "hooks-goreleaser", VersionConstraint: ""},
 			{FullName: "provider-git", VersionConstraint: "^1.0.0"},
@@ -313,7 +313,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr := sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "wrong", VersionConstraint: "latest"},
 		},
 	})
@@ -323,7 +323,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr = sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:      "darwin",
 		Arch:    "amd64",
-		Plugins: []*registry.BatchPluginRequest{},
+		Plugins: []*registry.BatchRequestPlugin{},
 	})
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 	require.Equal(t, decodeError(t, rr.Body.Bytes()), "at least one plugin is required")
@@ -331,7 +331,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr = sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "provider-git", VersionConstraint: "xxxxxxx"},
 		},
 	})
@@ -341,7 +341,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr = sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "provider-giiiit", VersionConstraint: "latest"},
 		},
 	})
@@ -351,7 +351,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr = sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "provider-git", VersionConstraint: "latest"},
 			{FullName: "provider-git", VersionConstraint: "latest"},
 		},
@@ -362,7 +362,7 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	rr = sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",
 		Arch: "amd64",
-		Plugins: []*registry.BatchPluginRequest{
+		Plugins: []*registry.BatchRequestPlugin{
 			{FullName: "provider-gitlab", VersionConstraint: "^8.0.0"},
 		},
 	})
