@@ -131,7 +131,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		p := config.Plugins.Find(pluginResponse.FullName)
 		foundRelease, err := p.GetReleaseWithVersionConstraint(r.Context(), s.db, pluginResponse.VersionConstraint)
 		if err != nil {
-			s.writeJSONError(w, r, http.StatusBadRequest, err, fmt.Sprintf("could not get plugin %s", pluginResponse.FullName))
+			s.writeJSONError(w, r, http.StatusBadRequest, err, fmt.Sprintf("could not resolve plugin %s", pluginResponse.FullName))
 			return
 		}
 		foundAsset := foundRelease.Assets[batchResponse.GetOSArch()]

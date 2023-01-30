@@ -191,7 +191,7 @@ func bootstrapDatabase(fsClient *firestore.Client) error {
 		return err
 	}
 
-	err = createPluginDoc(fsClient, "hooks-example", "5.0.0")
+	err = createPluginDoc(fsClient, "hooks-goreleaser", "5.0.0")
 	if err != nil {
 		return err
 	}
@@ -251,4 +251,121 @@ func TestUpdateAndGetPlugin(t *testing.T) {
 	require.Equal(t, "3.0.0", plugin.LatestRelease.Version)
 	require.Len(t, plugin.LatestRelease.Assets, 1)
 	require.Equal(t, "condition-default_darwin_arm64", plugin.LatestRelease.Assets["darwin/arm64"].FileName)
+}
+
+func sendBatchRequest(t *testing.T, s *Server, br *registry.BatchRequest) *httptest.ResponseRecorder {
+	var bodyBuffer bytes.Buffer
+	require.NoError(t, json.NewEncoder(&bodyBuffer).Encode(br))
+	rr := sendRequest(s, "POST", "/api/v2/plugins/_batch", &bodyBuffer)
+	return rr
+}
+
+func TestBatchEndpoint(t *testing.T) {
+	killFirebaseEmulator, err := starsFirebaseEmulator()
+	require.NoError(t, err)
+	defer killFirebaseEmulator()
+	s, fsClient, err := newTestServer()
+	require.NoError(t, err)
+
+	require.NoError(t, bootstrapDatabase(fsClient))
+
+	batchRequest := &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "condition-github", VersionConstraint: "latest"},
+			{FullName: "hooks-goreleaser", VersionConstraint: ""},
+			{FullName: "provider-git", VersionConstraint: "^1.0.0"},
+		},
+	}
+
+	rr := sendBatchRequest(t, s, batchRequest)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var batchResponse registry.BatchResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &batchResponse))
+	require.Len(t, batchResponse.Plugins, 3)
+	require.Equal(t, "4.0.0", batchResponse.Plugins[0].Version)
+	require.Equal(t, "latest", batchResponse.Plugins[0].VersionConstraint)
+	require.Equal(t, "5.0.0", batchResponse.Plugins[1].Version)
+	require.Equal(t, "latest", batchResponse.Plugins[1].VersionConstraint)
+	require.Equal(t, "1.2.0", batchResponse.Plugins[2].Version)
+	require.Equal(t, "^1.0.0", batchResponse.Plugins[2].VersionConstraint)
+	require.Equal(t, "f3a53717f71bc03b4a784eba5dd1f2454edc4c418a291ae038446236cb559611", batchResponse.DownloadHash)
+}
+
+func decodeError(t *testing.T, body []byte) string {
+	var err struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(body, &err))
+	return err.Error
+}
+
+func TestBatchEndpointBadRequests(t *testing.T) {
+	killFirebaseEmulator, err := starsFirebaseEmulator()
+	require.NoError(t, err)
+	defer killFirebaseEmulator()
+	s, fsClient, err := newTestServer()
+	require.NoError(t, err)
+
+	require.NoError(t, bootstrapDatabase(fsClient))
+
+	rr := sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "wrong", VersionConstraint: "latest"},
+		},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, decodeError(t, rr.Body.Bytes()), "has an invalid name")
+
+	rr = sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:      "darwin",
+		Arch:    "amd64",
+		Plugins: []*registry.BatchPluginRequest{},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Equal(t, decodeError(t, rr.Body.Bytes()), "at least one plugin is required")
+
+	rr = sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "provider-git", VersionConstraint: "xxxxxxx"},
+		},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, decodeError(t, rr.Body.Bytes()), "invalid version constraint")
+
+	rr = sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "provider-giiiit", VersionConstraint: "latest"},
+		},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, decodeError(t, rr.Body.Bytes()), "does not exist")
+
+	rr = sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "provider-git", VersionConstraint: "latest"},
+			{FullName: "provider-git", VersionConstraint: "latest"},
+		},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, decodeError(t, rr.Body.Bytes()), "requested multiple times")
+
+	rr = sendBatchRequest(t, s, &registry.BatchRequest{
+		OS:   "darwin",
+		Arch: "amd64",
+		Plugins: []*registry.BatchPluginRequest{
+			{FullName: "provider-gitlab", VersionConstraint: "^8.0.0"},
+		},
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, decodeError(t, rr.Body.Bytes()), "could not resolve")
 }

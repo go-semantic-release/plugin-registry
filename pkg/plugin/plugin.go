@@ -190,7 +190,7 @@ func findMatchingVersion(stringVersions []string, constraint *semver.Constraints
 			return v.String(), nil
 		}
 	}
-	return "", nil
+	return "", fmt.Errorf("no matching version found for constraint %s", constraint.String())
 }
 
 func (p *Plugin) GetReleaseWithVersionConstraint(ctx context.Context, db *firestore.Client, versionConstraint string) (*registry.PluginRelease, error) {
@@ -214,9 +214,6 @@ func (p *Plugin) GetReleaseWithVersionConstraint(ctx context.Context, db *firest
 	matchingVersion, err := findMatchingVersion(versions, constraint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find matching version: %w", err)
-	}
-	if matchingVersion == "" {
-		return nil, fmt.Errorf("no matching version found for constraint %s", versionConstraint)
 	}
 	return p.GetRelease(ctx, db, matchingVersion)
 }

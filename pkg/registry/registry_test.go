@@ -8,7 +8,9 @@ import (
 )
 
 func newBatchPluginResponse(fullName, versionConstraint, version string) *BatchPluginResponse {
-	return &BatchPluginResponse{BatchPluginRequest: &BatchPluginRequest{FullName: fullName, VersionConstraint: versionConstraint}, Version: version}
+	res := NewBatchPluginResponse(&BatchPluginRequest{FullName: fullName, VersionConstraint: versionConstraint})
+	res.Version = version
+	return res
 }
 
 func TestBatchPluginHash(t *testing.T) {
@@ -16,8 +18,8 @@ func TestBatchPluginHash(t *testing.T) {
 		input    *BatchPluginResponse
 		expected string
 	}{
-		{input: newBatchPluginResponse("foo", "^1.0.0", "1.2.3"), expected: "4f1781ea45f062354af59d6fbc4bd5390678621dfc0a223d8d87e7ade495315a"},
-		{input: newBatchPluginResponse("Foo", "^1.0.0", "1.2.3"), expected: "4f1781ea45f062354af59d6fbc4bd5390678621dfc0a223d8d87e7ade495315a"},
+		{input: newBatchPluginResponse("foo", "^1.0.0", "1.2.3"), expected: "6e9c2ee756a18cfb7d4a01bc7863e5844a83f071b277dffd2dfa12e501e7fb0e"},
+		{input: newBatchPluginResponse("Foo", "^1.0.0", "1.2.3"), expected: "6e9c2ee756a18cfb7d4a01bc7863e5844a83f071b277dffd2dfa12e501e7fb0e"},
 	}
 
 	for _, testCase := range testCases {
@@ -42,14 +44,15 @@ func TestBatchRequestHash(t *testing.T) {
 					newBatchPluginResponse("bar", "^2.0.0", "2.2.3"),
 				},
 			},
-			expected: "d36138edb269339e3c2117afc24d7f45afdaa48bc12797e0213776578ae1f395",
+			expected: "ab323e06aea1e43de11d5d272ab8d3d88375d934c5436d6d332e02f6223af0eb",
 		},
 	}
 
 	for _, testCase := range testCases {
-		actual := testCase.input.Hash()
-		require.Equal(t, "darwin", testCase.input.OS)
-		require.Equal(t, "amd64", testCase.input.Arch)
+		res := NewBatchResponse(testCase.input.BatchRequest, testCase.input.Plugins)
+		actual := res.Hash()
+		require.Equal(t, "darwin", res.OS)
+		require.Equal(t, "amd64", res.Arch)
 		require.Equal(t, testCase.expected, hex.EncodeToString(actual))
 	}
 }

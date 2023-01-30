@@ -96,9 +96,10 @@ func (b BatchPluginResponses) Has(fullName string) bool {
 }
 
 type BatchRequest struct {
-	OS      string
-	Arch    string
-	Plugins []*BatchPluginRequest
+	OS         string
+	Arch       string
+	Plugins    []*BatchPluginRequest
+	isEmbedded bool // used to prevent validation
 }
 
 func (b *BatchRequest) GetOSArch() string {
@@ -106,6 +107,10 @@ func (b *BatchRequest) GetOSArch() string {
 }
 
 func (b *BatchRequest) Validate() error {
+	if b.isEmbedded {
+		panic("validation of the embedded batch request is not allowed")
+	}
+
 	if b.OS == "" || b.Arch == "" {
 		return fmt.Errorf("os and arch are required")
 	}
@@ -131,8 +136,9 @@ func NewBatchResponse(req *BatchRequest, plugins BatchPluginResponses) *BatchRes
 	sort.Sort(plugins)
 	return &BatchResponse{
 		BatchRequest: &BatchRequest{
-			OS:   strings.ToLower(req.OS),
-			Arch: strings.ToLower(req.Arch),
+			OS:         strings.ToLower(req.OS),
+			Arch:       strings.ToLower(req.Arch),
+			isEmbedded: true,
 		},
 		Plugins: plugins,
 	}
