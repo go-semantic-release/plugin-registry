@@ -147,7 +147,14 @@ func (b *BatchResponse) Hash() []byte {
 	h := sha512.New512_256()
 	_, _ = io.WriteString(h, b.GetOSArch())
 	_, _ = h.Write(b.Plugins.Hash())
-	hSum := h.Sum(nil)
-	b.DownloadHash = hex.EncodeToString(hSum)
-	return hSum
+	return h.Sum(nil)
+}
+
+func (b *BatchResponse) CalculateHash() {
+	b.DownloadHash = hex.EncodeToString(b.Hash())
+}
+
+func (b *BatchResponse) VerifyHash() bool {
+	calculatedHash := hex.EncodeToString(b.Hash())
+	return calculatedHash == b.DownloadHash
 }

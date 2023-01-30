@@ -149,7 +149,8 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		pluginResponse.URL = foundAsset.URL
 		pluginResponse.Checksum = foundAsset.Checksum
 	}
-	batchResponse.Hash()
+
+	batchResponse.CalculateHash()
 
 	// TODO: check if hash is in cache, if not, download all assets and save as tgz
 
