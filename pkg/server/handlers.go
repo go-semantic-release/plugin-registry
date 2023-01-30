@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
@@ -73,15 +76,77 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, res)
 }
 
+func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (registry.BatchPluginResponses, error) {
+	err := batchRequest.Validate()
+	if err != nil {
+		return nil, err
+	}
+	pluginResponses := make(registry.BatchPluginResponses, 0)
+	for _, pluginReq := range batchRequest.Plugins {
+		if !strings.Contains(pluginReq.FullName, "-") {
+			return nil, fmt.Errorf("plugin %s has an invalid name", pluginReq.FullName)
+		}
+
+		if pluginReq.VersionConstraint == "" {
+			pluginReq.VersionConstraint = "latest"
+		}
+		if pluginReq.VersionConstraint != "latest" {
+			versionConstraint, err := semver.NewConstraint(pluginReq.VersionConstraint)
+			if err != nil {
+				return nil, fmt.Errorf("plugin %s has an invalid version constraint", pluginReq.FullName)
+			}
+			pluginReq.VersionConstraint = versionConstraint.String()
+		}
+
+		if pluginResponses.Has(pluginReq.FullName) {
+			return nil, fmt.Errorf("plugin %s requested multiple times", pluginReq.FullName)
+		}
+
+		p := config.Plugins.Find(pluginReq.FullName)
+		if p == nil {
+			return nil, fmt.Errorf("plugin %s does not exist", pluginReq.FullName)
+		}
+
+		pluginResponses = append(pluginResponses, registry.NewBatchPluginResponse(pluginReq))
+	}
+	return pluginResponses, nil
+}
+
 func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
-	var batchRequest registry.BatchRequest
-	if err := json.NewDecoder(r.Body).Decode(&batchRequest); err != nil {
+	batchRequest := new(registry.BatchRequest)
+	if err := json.NewDecoder(r.Body).Decode(batchRequest); err != nil {
 		s.writeJSONError(w, r, http.StatusBadRequest, err, "could not decode request")
 		return
 	}
-	if len(batchRequest.Plugins) == 0 {
-		s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("no plugins provided"))
+
+	pluginResponses, err := validateAndCreatePluginResponses(batchRequest)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	// TODO
+
+	batchResponse := registry.NewBatchResponse(batchRequest, pluginResponses)
+
+	for _, pluginResponse := range batchResponse.Plugins {
+		p := config.Plugins.Find(pluginResponse.FullName)
+		foundRelease, err := p.GetReleaseWithVersionConstraint(r.Context(), s.db, pluginResponse.VersionConstraint)
+		if err != nil {
+			s.writeJSONError(w, r, http.StatusBadRequest, err, fmt.Sprintf("could not get plugin %s", pluginResponse.FullName))
+			return
+		}
+		foundAsset := foundRelease.Assets[batchResponse.GetOSArch()]
+		if foundAsset == nil {
+			s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("could not find %s asset for plugin %s", batchResponse.GetOSArch(), pluginResponse.FullName))
+			return
+		}
+
+		pluginResponse.Version = foundRelease.Version
+		pluginResponse.FileName = foundAsset.FileName
+		pluginResponse.URL = foundAsset.URL
+		pluginResponse.Checksum = foundAsset.Checksum
+	}
+
+	batchResponse.Hash()
+
+	s.writeJSON(w, batchResponse)
 }

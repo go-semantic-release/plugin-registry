@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	"github.com/Masterminds/semver/v3"
@@ -127,7 +129,7 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 	return err
 }
 
-func (p *Plugin) GetVersions(ctx context.Context, db *firestore.Client) ([]string, error) {
+func (p *Plugin) getVersions(ctx context.Context, db *firestore.Client) ([]string, error) {
 	versionRefs, err := p.getVersionsColRef(db).DocumentRefs(ctx).GetAll()
 	if err != nil {
 		return nil, err
@@ -139,33 +141,84 @@ func (p *Plugin) GetVersions(ctx context.Context, db *firestore.Client) ([]strin
 	return versions, nil
 }
 
+func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry.Plugin, error) {
+	res, err := p.getDocRef(db).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pluginData := fsPluginData{Plugin: &registry.Plugin{}}
+	if dErr := res.DataTo(&pluginData); dErr != nil {
+		return nil, dErr
+	}
+	res, err = pluginData.LatestReleaseRef.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var latestPluginRelease registry.PluginRelease
+	if dErr := res.DataTo(&latestPluginRelease); dErr != nil {
+		return nil, dErr
+	}
+	pluginData.Plugin.LatestRelease = &latestPluginRelease
+	return pluginData.Plugin, nil
+}
+
 func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*registry.Plugin, error) {
-	pluginRef := p.getDocRef(db)
-	res, err := pluginRef.Get(ctx)
+	latestRelease, err := p.getPlugin(ctx, db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get plugin: %w", err)
 	}
-	dp := fsPluginData{Plugin: &registry.Plugin{}}
-	if dErr := res.DataTo(&dp); dErr != nil {
-		return nil, dErr
-	}
-	res, err = dp.LatestReleaseRef.Get(ctx)
+	versions, err := p.getVersions(ctx, db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get versions: %w", err)
+	}
+	latestRelease.Versions = versions
+	return latestRelease, nil
+}
+
+func findMatchingVersion(stringVersions []string, constraint *semver.Constraints) (string, error) {
+	versions := make(semver.Collection, len(stringVersions))
+	for i, v := range stringVersions {
+		version, err := semver.NewVersion(v)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse version %s: %w", v, err)
+		}
+		versions[i] = version
+	}
+	sort.Sort(sort.Reverse(versions))
+	for _, v := range versions {
+		if constraint.Check(v) {
+			return v.String(), nil
+		}
+	}
+	return "", nil
+}
+
+func (p *Plugin) GetReleaseWithVersionConstraint(ctx context.Context, db *firestore.Client, versionConstraint string) (*registry.PluginRelease, error) {
+	if versionConstraint == "latest" {
+		latestPlugin, err := p.getPlugin(ctx, db)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get latest release: %w", err)
+		}
+		return latestPlugin.LatestRelease, nil
+	}
+	constraint, err := semver.NewConstraint(versionConstraint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse version constraint: %w", err)
 	}
 
-	var lr registry.PluginRelease
-	if dErr := res.DataTo(&lr); dErr != nil {
-		return nil, dErr
-	}
-	dp.Plugin.LatestRelease = &lr
-
-	versions, err := p.GetVersions(ctx, db)
+	versions, err := p.getVersions(ctx, db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get versions: %w", err)
 	}
-	dp.Plugin.Versions = versions
-	return dp.Plugin, nil
+
+	matchingVersion, err := findMatchingVersion(versions, constraint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find matching version: %w", err)
+	}
+	if matchingVersion == "" {
+		return nil, fmt.Errorf("no matching version found for constraint %s", versionConstraint)
+	}
+	return p.GetRelease(ctx, db, matchingVersion)
 }
 
 func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version string) (*registry.PluginRelease, error) {
@@ -184,7 +237,7 @@ type Plugins []*Plugin
 
 func (l Plugins) Find(name string) *Plugin {
 	for _, p := range l {
-		if p.GetFullName() == name {
+		if p.GetFullName() == strings.ToLower(name) {
 			return p
 		}
 	}

@@ -1,6 +1,12 @@
 package registry
 
 import (
+	"crypto/sha512"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -28,15 +34,115 @@ type PluginAsset struct {
 	Checksum string
 }
 
-type BatchPluginConstraint struct {
+type BatchPluginRequest struct {
 	FullName          string
 	VersionConstraint string
 }
 
+type BatchPluginResponse struct {
+	*BatchPluginRequest
+	Version  string
+	FileName string
+	URL      string
+	Checksum string
+}
+
+func NewBatchPluginResponse(req *BatchPluginRequest) *BatchPluginResponse {
+	return &BatchPluginResponse{
+		BatchPluginRequest: &BatchPluginRequest{
+			FullName:          strings.ToLower(req.FullName),
+			VersionConstraint: req.VersionConstraint,
+		},
+	}
+}
+
+func (b *BatchPluginResponse) String() string {
+	return fmt.Sprintf("%s@%s (version=%s) (checksum=%s)", b.FullName, b.VersionConstraint, b.Version, b.Checksum)
+}
+
+func (b *BatchPluginResponse) Hash() []byte {
+	h := sha512.New512_256()
+	_, _ = io.WriteString(h, b.String())
+	return h.Sum(nil)
+}
+
+type BatchPluginResponses []*BatchPluginResponse
+
+func (b BatchPluginResponses) Len() int { return len(b) }
+
+func (b BatchPluginResponses) Less(i, j int) bool {
+	return strings.Compare(b[i].FullName, b[j].FullName) < 0
+}
+
+func (b BatchPluginResponses) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b BatchPluginResponses) Hash() []byte {
+	h := sha512.New512_256()
+	for _, c := range b {
+		_, _ = h.Write(c.Hash())
+	}
+	return h.Sum(nil)
+}
+
+func (b BatchPluginResponses) Has(fullName string) bool {
+	for _, c := range b {
+		if c.FullName == strings.ToLower(fullName) {
+			return true
+		}
+	}
+	return false
+}
+
 type BatchRequest struct {
-	Plugins []BatchPluginConstraint
+	OS      string
+	Arch    string
+	Plugins []*BatchPluginRequest
+}
+
+func (b *BatchRequest) GetOSArch() string {
+	return fmt.Sprintf("%s/%s", b.OS, b.Arch)
+}
+
+func (b *BatchRequest) Validate() error {
+	if b.OS == "" || b.Arch == "" {
+		return fmt.Errorf("os and arch are required")
+	}
+
+	if len(b.Plugins) == 0 {
+		return fmt.Errorf("at least one plugin is required")
+	}
+
+	if len(b.Plugins) > 10 {
+		return fmt.Errorf("maximum of 10 plugins allowed")
+	}
+	return nil
 }
 
 type BatchResponse struct {
-	Plugins map[string]*Plugin
+	*BatchRequest
+	Plugins      BatchPluginResponses
+	DownloadHash string
+	DownloadURL  string
+}
+
+func NewBatchResponse(req *BatchRequest, plugins BatchPluginResponses) *BatchResponse {
+	sort.Sort(plugins)
+	return &BatchResponse{
+		BatchRequest: &BatchRequest{
+			OS:   strings.ToLower(req.OS),
+			Arch: strings.ToLower(req.Arch),
+		},
+		Plugins: plugins,
+	}
+}
+
+func (b *BatchResponse) Hash() []byte {
+	h := sha512.New512_256()
+	_, _ = io.WriteString(h, b.GetOSArch())
+	_, _ = h.Write(b.Plugins.Hash())
+	hSum := h.Sum(nil)
+	b.DownloadHash = hex.EncodeToString(hSum)
+	return hSum
 }
