@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-
 	"github.com/go-chi/chi/v5"
+	"github.com/go-semantic-release/plugin-registry/pkg/batch"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 )
@@ -133,9 +134,9 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 
 	for _, pluginResponse := range batchResponse.Plugins {
 		p := config.Plugins.Find(pluginResponse.FullName)
-		foundRelease, err := p.GetReleaseWithVersionConstraint(r.Context(), s.db, pluginResponse.VersionConstraint)
-		if err != nil {
-			s.writeJSONError(w, r, http.StatusBadRequest, err, fmt.Sprintf("could not resolve plugin %s", pluginResponse.FullName))
+		foundRelease, rErr := p.GetReleaseWithVersionConstraint(r.Context(), s.db, pluginResponse.VersionConstraint)
+		if rErr != nil {
+			s.writeJSONError(w, r, http.StatusBadRequest, rErr, fmt.Sprintf("could not resolve plugin %s", pluginResponse.FullName))
 			return
 		}
 		foundAsset := foundRelease.Assets[batchResponse.GetOSArch()]
@@ -153,6 +154,20 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	batchResponse.CalculateHash()
 
 	// TODO: check if hash is in cache, if not, download all assets and save as tgz
+
+	tarFileName, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not create plugin archive")
+		return
+	}
+	s.log.Infof("created plugin archive %s", tarFileName)
+	tarFile, err := os.Open(tarFileName)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not open plugin archive")
+		return
+	}
+	tarFile.Close()
+	// TODO: upload to object storage
 
 	s.writeJSON(w, batchResponse)
 }
