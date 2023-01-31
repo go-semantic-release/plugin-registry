@@ -1,17 +1,23 @@
 package server
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-semantic-release/plugin-registry/pkg/batch"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
+	"github.com/patrickmn/go-cache"
 )
 
 func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +119,7 @@ func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (regi
 	return pluginResponses, nil
 }
 
+//gocyclo:ignore
 func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
@@ -130,7 +137,15 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	batchResponse := registry.NewBatchResponse(batchRequest, pluginResponses)
-	// TODO: use batchResponse.Hash() as cache key
+
+	// hash the batch request without the resolved versions
+	batchRequestHash := hex.EncodeToString(batchResponse.Hash())
+	cachedBatchResponse, found := s.cache.Get(batchRequestHash)
+	if found {
+		s.log.Infof("found cached batch response for %s", batchRequestHash)
+		s.writeJSON(w, cachedBatchResponse)
+		return
+	}
 
 	for _, pluginResponse := range batchResponse.Plugins {
 		p := config.Plugins.Find(pluginResponse.FullName)
@@ -151,23 +166,61 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		pluginResponse.Checksum = foundAsset.Checksum
 	}
 
+	// calculate the hash of the response, this now includes the plugin versions
 	batchResponse.CalculateHash()
+	archiveKey := fmt.Sprintf("archives/plugins-%s.tar.gz", batchResponse.DownloadHash)
+	// the download url is deterministic, so we can set it here
+	batchResponse.DownloadURL = s.config.GetPublicPluginCacheDownloadURL(archiveKey)
 
-	// TODO: check if hash is in cache, if not, download all assets and save as tgz
+	_, err = s.storage.HeadObject(r.Context(), &s3.HeadObjectInput{
+		Bucket: s.config.GetBucket(),
+		Key:    &archiveKey,
+	})
+	if err == nil {
+		// the archive already exists, return the response
+		s.log.Infof("found cached archive %s", archiveKey)
+		s.cache.Set(batchRequestHash, batchResponse, cache.DefaultExpiration)
+		s.writeJSON(w, batchResponse)
+		return
+	}
 
+	var genericAPIError *smithy.GenericAPIError
+	if !errors.As(err, &genericAPIError) || genericAPIError.ErrorCode() != "NotFound" {
+		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not check if plugin archive exists")
+		return
+	}
+
+	s.log.Infof("plugin archive %s not found, creating...", archiveKey)
 	tarFileName, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not create plugin archive")
 		return
 	}
-	s.log.Infof("created plugin archive %s", tarFileName)
+	s.log.Infof("created plugin archive %s, uploading...", tarFileName)
 	tarFile, err := os.Open(tarFileName)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not open plugin archive")
 		return
 	}
-	tarFile.Close()
-	// TODO: upload to object storage
 
+	putRes, err := s.storage.PutObject(r.Context(), &s3.PutObjectInput{
+		Bucket:      s.config.GetBucket(),
+		Key:         &archiveKey,
+		Body:        tarFile,
+		ContentType: aws.String("application/gzip"),
+	})
+	if closeErr := tarFile.Close(); closeErr != nil {
+		s.log.Errorf("could not close plugin archive file: %v", closeErr)
+	}
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not upload plugin archive")
+		return
+	}
+	s.log.Infof("uploaded plugin archive %s", *putRes.VersionId)
+	if rmErr := os.Remove(tarFileName); rmErr != nil {
+		s.log.Errorf("could not remove plugin archive file: %v", rmErr)
+	}
+
+	s.cache.Set(batchRequestHash, batchResponse, cache.DefaultExpiration)
 	s.writeJSON(w, batchResponse)
 }

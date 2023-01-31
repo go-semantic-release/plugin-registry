@@ -7,21 +7,25 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-semantic-release/plugin-registry/pkg/config"
 	legacyV1 "github.com/go-semantic-release/plugin-registry/pkg/legacy/v1"
 	"github.com/google/go-github/v50/github"
+	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	router             chi.Router
-	log                *logrus.Logger
-	db                 *firestore.Client
-	ghClient           *github.Client
-	ghMutex            sync.Mutex
-	adminAccessToken   string
-	rateLimitPerMinute int
+	router   chi.Router
+	log      *logrus.Logger
+	db       *firestore.Client
+	ghClient *github.Client
+	ghMutex  sync.Mutex
+	storage  *s3.Client
+	config   *config.ServerConfig
+	cache    *cache.Cache
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -36,15 +40,16 @@ func (s *Server) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request)
 	s.writeJSONError(w, r, http.StatusMethodNotAllowed, fmt.Errorf("method now allowed"))
 }
 
-func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, adminAccessToken string) *Server {
+func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, storage *s3.Client, serverCfg *config.ServerConfig) *Server {
 	router := chi.NewRouter()
 	server := &Server{
-		router:             router,
-		log:                log,
-		db:                 db,
-		ghClient:           ghClient,
-		adminAccessToken:   adminAccessToken,
-		rateLimitPerMinute: 1,
+		router:   router,
+		log:      log,
+		db:       db,
+		ghClient: ghClient,
+		storage:  storage,
+		config:   serverCfg,
+		cache:    cache.New(5*time.Minute, 10*time.Minute),
 	}
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)

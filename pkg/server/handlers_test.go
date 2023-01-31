@@ -108,7 +108,9 @@ func newTestServer() (*Server, *firestore.Client, error) {
 		return nil, nil, err
 	}
 
-	return New(log, fsClient, newGitHubClient(), "admin-token"), fsClient, nil
+	return New(log, fsClient, newGitHubClient(), nil, &config.ServerConfig{
+		AdminAccessToken: "admin-token",
+	}), fsClient, nil
 }
 
 func sendRequest(s http.Handler, method, path string, body io.Reader, modReqFns ...func(req *http.Request)) *httptest.ResponseRecorder {

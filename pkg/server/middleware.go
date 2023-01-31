@@ -9,11 +9,11 @@ import (
 
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.adminAccessToken == "" {
+		if s.config.AdminAccessToken == "" {
 			s.writeJSONError(w, r, http.StatusUnauthorized, fmt.Errorf("no access token configured"))
 			return
 		}
-		if r.Header.Get("Authorization") != s.adminAccessToken {
+		if r.Header.Get("Authorization") != s.config.AdminAccessToken {
 			s.writeJSONError(w, r, http.StatusUnauthorized, fmt.Errorf("invalid access token"))
 			return
 		}

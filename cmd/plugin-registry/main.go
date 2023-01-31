@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,10 +10,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/go-semantic-release/plugin-registry/pkg/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/server"
-	"github.com/google/go-github/v50/github"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/oauth2"
 )
 
 func setupLogger() *logrus.Logger {
@@ -25,26 +23,9 @@ func setupLogger() *logrus.Logger {
 	return log
 }
 
-func setupGitHubClient() (*github.Client, error) {
-	token, ok := os.LookupEnv("GITHUB_TOKEN")
-	if !ok {
-		return nil, fmt.Errorf("GITHUB_TOKEN is missing")
-	}
-	oauthClient := oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}))
-	return github.NewClient(oauthClient), nil
-}
-
-func getServerAddr() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	return os.Getenv("BIND_ADDRESS") + ":" + port
-}
-
 func run(log *logrus.Logger) error {
-	log.Info("setting up GitHub client...")
-	ghClient, err := setupGitHubClient()
+	log.Info("reading configuration...")
+	cfg, err := config.NewServerConfigFromEnv()
 	if err != nil {
 		return err
 	}
@@ -55,9 +36,14 @@ func run(log *logrus.Logger) error {
 		return err
 	}
 
+	log.Info("setting up S3 client...")
+	s3Client, err := cfg.CreateS3Client()
+	if err != nil {
+		return err
+	}
 	srv := &http.Server{
-		Addr:    getServerAddr(),
-		Handler: server.New(log, db, ghClient, os.Getenv("ADMIN_ACCESS_TOKEN")),
+		Addr:    cfg.GetServerAddr(),
+		Handler: server.New(log, db, cfg.CreateGitHubClient(), s3Client, cfg),
 	}
 	go func() {
 		log.Printf("listening on %s", srv.Addr)
