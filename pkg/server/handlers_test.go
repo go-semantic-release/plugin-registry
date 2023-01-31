@@ -17,6 +17,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 	"github.com/google/go-github/v50/github"
@@ -97,20 +101,42 @@ func starsFirebaseEmulator() (func(), error) {
 	return killFn, nil
 }
 
-func newTestServer() (*Server, *firestore.Client, error) {
+func createS3Client(t *testing.T) (*s3.Client, func()) {
+	tc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead && strings.HasPrefix(r.URL.Path, "/test/archives/plugins-") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
+		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:               tc.URL,
+				HostnameImmutable: true,
+			}, nil
+		})),
+		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
+	)
+	require.NoError(t, err)
+	return s3.NewFromConfig(s3Cfg), tc.Close
+}
+
+func newTestServer(t *testing.T) (*Server, *firestore.Client, func()) {
 	log := logrus.New()
 	log.Out = io.Discard
 
 	_ = os.Setenv("FIRESTORE_EMULATOR_HOST", "127.0.0.1:9090")
 	_ = os.Unsetenv("GOOGLE_APPLICATION_CREDENTIALS")
 	fsClient, err := firestore.NewClient(context.Background(), "go-semantic-release")
-	if err != nil {
-		return nil, nil, err
-	}
+	require.NoError(t, err)
 
-	return New(log, fsClient, newGitHubClient(), nil, &config.ServerConfig{
-		AdminAccessToken: "admin-token",
-	}), fsClient, nil
+	s3Client, closeFn := createS3Client(t)
+
+	return New(log, fsClient, newGitHubClient(), s3Client, &config.ServerConfig{
+		AdminAccessToken:   "admin-token",
+		CloudflareR2Bucket: "test",
+	}), fsClient, closeFn
 }
 
 func sendRequest(s http.Handler, method, path string, body io.Reader, modReqFns ...func(req *http.Request)) *httptest.ResponseRecorder {
@@ -124,8 +150,8 @@ func sendRequest(s http.Handler, method, path string, body io.Reader, modReqFns 
 }
 
 func TestListPlugins(t *testing.T) {
-	s, _, err := newTestServer()
-	require.NoError(t, err)
+	s, _, closeFn := newTestServer(t)
+	defer closeFn()
 
 	rr := sendRequest(s, "GET", "/api/v2/plugins", nil)
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -139,7 +165,7 @@ func saveDoc(fsClient *firestore.Client, collection, doc string, data map[string
 	return err
 }
 
-func createPluginDoc(fsClient *firestore.Client, fullName, latestRelease string) error {
+func createPluginDoc(fsClient *firestore.Client, dlHost, fullName, latestRelease string) error {
 	pluginType, name, _ := strings.Cut(fullName, "-")
 	err := saveDoc(fsClient, "plugins", fullName, map[string]any{
 		"FullName":         fullName,
@@ -162,17 +188,17 @@ func createPluginDoc(fsClient *firestore.Client, fullName, latestRelease string)
 			"Assets": map[string]map[string]string{
 				"darwin/amd64": {
 					"FileName": fullName + "-darwin-amd64",
-					"URL":      "https//download.example.com/" + fullName + "-darwin-amd64",
+					"URL":      dlHost + "/" + fullName + "-darwin-amd64",
 					"OS":       "darwin",
 					"Arch":     "amd64",
-					"Checksum": "1234",
+					"Checksum": "3fa65313f3ee7c23d31896e7f57af67618b88dff00f6eb7c3aba2d968d6d4b32",
 				},
 				"linux/amd64": {
 					"FileName": fullName + "-linux-amd64",
-					"URL":      "https//download.example.com/" + fullName + "-linux-amd64",
+					"URL":      dlHost + "/" + fullName + "-linux-amd64",
 					"OS":       "linux",
 					"Arch":     "amd64",
-					"Checksum": "5678",
+					"Checksum": "3fa65313f3ee7c23d31896e7f57af67618b88dff00f6eb7c3aba2d968d6d4b32",
 				},
 			},
 		})
@@ -183,32 +209,36 @@ func createPluginDoc(fsClient *firestore.Client, fullName, latestRelease string)
 	return err
 }
 
-func bootstrapDatabase(fsClient *firestore.Client) error {
-	err := createPluginDoc(fsClient, "provider-git", "3.0.0")
-	if err != nil {
-		return err
+func bootstrapDatabase(t *testing.T, fsClient *firestore.Client) func() {
+	tc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, "test-file")
+	}))
+
+	allPlugins := map[string]string{
+		"provider-git":     "3.0.0",
+		"condition-github": "4.0.0",
+		"hooks-goreleaser": "5.0.0",
 	}
-	err = createPluginDoc(fsClient, "condition-github", "4.0.0")
-	if err != nil {
-		return err
+	for plugin, latestRelease := range allPlugins {
+		err := createPluginDoc(fsClient, tc.URL, plugin, latestRelease)
+		if err != nil {
+			require.NoError(t, err)
+		}
 	}
 
-	err = createPluginDoc(fsClient, "hooks-goreleaser", "5.0.0")
-	if err != nil {
-		return err
-	}
-
-	return err
+	return tc.Close
 }
 
 func TestGetPlugin(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
 	defer killFirebaseEmulator()
-	s, fsClient, err := newTestServer()
-	require.NoError(t, err)
+	s, fsClient, closeFn := newTestServer(t)
+	defer closeFn()
 
-	require.NoError(t, bootstrapDatabase(fsClient))
+	dlServerCloseFn := bootstrapDatabase(t, fsClient)
+	defer dlServerCloseFn()
 
 	rr := sendRequest(s, "GET", "/api/v2/plugins/provider-git", nil)
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -223,8 +253,8 @@ func TestUpdateAndGetPlugin(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
 	defer killFirebaseEmulator()
-	s, _, err := newTestServer()
-	require.NoError(t, err)
+	s, _, closeFn := newTestServer(t)
+	defer closeFn()
 
 	rr := sendRequest(s, "PUT", "/api/v2/plugins/condition-default", bytes.NewBufferString("{}"), func(req *http.Request) {
 		req.Header.Set("Authorization", "admin-token")
@@ -266,10 +296,11 @@ func TestBatchEndpoint(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
 	defer killFirebaseEmulator()
-	s, fsClient, err := newTestServer()
-	require.NoError(t, err)
+	s, fsClient, closeFn := newTestServer(t)
+	defer closeFn()
 
-	require.NoError(t, bootstrapDatabase(fsClient))
+	dlServerCloseFn := bootstrapDatabase(t, fsClient)
+	defer dlServerCloseFn()
 
 	batchRequest := &registry.BatchRequest{
 		OS:   "darwin",
@@ -292,7 +323,7 @@ func TestBatchEndpoint(t *testing.T) {
 	require.Equal(t, "latest", batchResponse.Plugins[1].VersionConstraint)
 	require.Equal(t, "1.2.0", batchResponse.Plugins[2].Version)
 	require.Equal(t, "^1.0.0", batchResponse.Plugins[2].VersionConstraint)
-	require.Equal(t, "f3a53717f71bc03b4a784eba5dd1f2454edc4c418a291ae038446236cb559611", batchResponse.DownloadHash)
+	require.Equal(t, "925aa24645bce75b089b973df930de01698242203695fe418a8020fc9d997a4f", batchResponse.DownloadHash)
 }
 
 func decodeError(t *testing.T, body []byte) string {
@@ -307,10 +338,11 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
 	defer killFirebaseEmulator()
-	s, fsClient, err := newTestServer()
-	require.NoError(t, err)
+	s, fsClient, closeFn := newTestServer(t)
+	defer closeFn()
 
-	require.NoError(t, bootstrapDatabase(fsClient))
+	dlServerCloseFn := bootstrapDatabase(t, fsClient)
+	defer dlServerCloseFn()
 
 	rr := sendBatchRequest(t, s, &registry.BatchRequest{
 		OS:   "darwin",

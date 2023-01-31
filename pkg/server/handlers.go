@@ -121,7 +121,7 @@ func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (regi
 
 //gocyclo:ignore
 func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
-	// Limit request body to 1MB
+	// limit request body to 1MB
 	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 
 	batchRequest := new(registry.BatchRequest)
@@ -203,7 +203,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	putRes, err := s.storage.PutObject(r.Context(), &s3.PutObjectInput{
+	_, err = s.storage.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      s.config.GetBucket(),
 		Key:         &archiveKey,
 		Body:        tarFile,
@@ -216,7 +216,8 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not upload plugin archive")
 		return
 	}
-	s.log.Infof("uploaded plugin archive %s", *putRes.VersionId)
+
+	s.log.Infof("uploaded plugin archive.")
 	if rmErr := os.Remove(tarFileName); rmErr != nil {
 		s.log.Errorf("could not remove plugin archive file: %v", rmErr)
 	}
