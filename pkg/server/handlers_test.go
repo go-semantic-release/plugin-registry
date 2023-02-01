@@ -168,18 +168,18 @@ func saveDoc(fsClient *firestore.Client, collection, doc string, data map[string
 
 func createPluginDoc(fsClient *firestore.Client, dlHost, fullName, latestRelease string) error {
 	pluginType, name, _ := strings.Cut(fullName, "-")
-	err := saveDoc(fsClient, "plugins", fullName, map[string]any{
+	err := saveDoc(fsClient, "dev-plugins", fullName, map[string]any{
 		"FullName":         fullName,
 		"Type":             pluginType,
 		"Name":             name,
 		"URL":              fmt.Sprintf("https://github.com/my-org/%s", fullName),
-		"LatestReleaseRef": fsClient.Doc(fmt.Sprintf("plugins/%s/versions/%s", fullName, latestRelease)),
+		"LatestReleaseRef": fsClient.Doc(fmt.Sprintf("dev-plugins/%s/versions/%s", fullName, latestRelease)),
 	})
 	if err != nil {
 		return err
 	}
 
-	versionsCollection := fmt.Sprintf("plugins/%s/versions", fullName)
+	versionsCollection := fmt.Sprintf("dev-plugins/%s/versions", fullName)
 
 	for _, version := range []string{"1.0.0", "1.1.0", "1.2.0", "2.0.0", "3.0.0", latestRelease} {
 		err = saveDoc(fsClient, versionsCollection, version, map[string]any{
