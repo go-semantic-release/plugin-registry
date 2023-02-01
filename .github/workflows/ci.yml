@@ -47,11 +47,7 @@ jobs:
           project_id: go-semantic-release
           credentials_json: ${{ secrets.GCLOUD_AUTH }}
         if: steps.semrel.outputs.version != ''
-      - uses: docker/login-action@v1
-        with:
-          registry: gcr.io
-          username: oauth2accesstoken
-          password: ${{ steps.gcloudauth.outputs.access_token }}
+      - uses: google-github-actions/setup-gcloud@v1
         if: steps.semrel.outputs.version != ''
       - run: ./scripts/docker-build-and-push.sh ${{ steps.semrel.outputs.version }}
         if: steps.semrel.outputs.version != ''

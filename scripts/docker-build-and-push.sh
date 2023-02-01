@@ -7,6 +7,8 @@ if [ -z "${1:-}" ]; then
   exit 1
 fi
 
+gcloud auth configure-docker gcr.io -q
+
 version=$1
 image_name="gcr.io/go-semantic-release/plugin-registry"
 image_name_version="$image_name:$version"
