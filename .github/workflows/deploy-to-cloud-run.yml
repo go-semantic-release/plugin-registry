@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "deployment stage"
+        required: true
+        default: "staging"
+      version:
+        description: "deployment version"
+        required: true
+        default: "latest"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: ./scripts/resolve-version.sh ${{ github.event.inputs.version }}
+      - uses: google-github-actions/auth@v1
+        with:
+          project_id: go-semantic-release
+          credentials_json: ${{ secrets.GCLOUD_AUTH }}
+      - uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: ${{ github.event.inputs.stage }}-plugin-registry
+          region: europe-west1
+          image: gcr.io/go-semantic-release/plugin-registry:${{ env.VERSION }}
