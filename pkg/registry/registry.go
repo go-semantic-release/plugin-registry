@@ -17,6 +17,7 @@ type Plugin struct {
 	URL           string
 	LatestRelease *PluginRelease
 	Versions      []string
+	UpdatedAt     time.Time
 }
 
 type PluginRelease struct {
@@ -24,6 +25,7 @@ type PluginRelease struct {
 	Prerelease bool
 	CreatedAt  time.Time
 	Assets     map[string]*PluginAsset
+	UpdatedAt  time.Time
 }
 
 type PluginAsset struct {

@@ -150,6 +150,9 @@ func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry
 	if dErr := res.DataTo(&pluginData); dErr != nil {
 		return nil, dErr
 	}
+	pluginData.UpdatedAt = res.UpdateTime
+
+	// resolve latest release
 	res, err = pluginData.LatestReleaseRef.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -224,9 +227,10 @@ func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version s
 		return nil, err
 	}
 	var pr registry.PluginRelease
-	if err := pluginRelease.DataTo(&pr); err != nil {
-		return nil, err
+	if dErr := pluginRelease.DataTo(&pr); dErr != nil {
+		return nil, dErr
 	}
+	pr.UpdatedAt = pluginRelease.UpdateTime
 	return &pr, nil
 }
 
