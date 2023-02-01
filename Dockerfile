@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine AS builder
+FROM golang:1.19 AS builder
 
 WORKDIR /app
 
@@ -6,6 +6,7 @@ COPY go.* ./
 RUN go mod download
 
 COPY ./ ./
+RUN go generate ./...
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-extldflags '-static' -s -w" ./cmd/plugin-registry/
 
 FROM gcr.io/distroless/static
