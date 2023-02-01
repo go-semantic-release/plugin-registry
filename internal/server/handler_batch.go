@@ -13,8 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"github.com/go-semantic-release/plugin-registry/pkg/batch"
-	"github.com/go-semantic-release/plugin-registry/pkg/config"
+	"github.com/go-semantic-release/plugin-registry/internal/batch"
+	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 )
 

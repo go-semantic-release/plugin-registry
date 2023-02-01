@@ -21,7 +21,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/go-semantic-release/plugin-registry/pkg/config"
+	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 	"github.com/google/go-github/v50/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"

@@ -1,6 +1,6 @@
 package config
 
-import "github.com/go-semantic-release/plugin-registry/pkg/plugin"
+import "github.com/go-semantic-release/plugin-registry/internal/plugin"
 
 var Plugins = plugin.Plugins{
 	{

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/go-semantic-release/plugin-registry/pkg/config"
-	"github.com/go-semantic-release/plugin-registry/pkg/plugin"
-	"github.com/go-semantic-release/plugin-registry/pkg/server"
+	"github.com/go-semantic-release/plugin-registry/internal/config"
+	"github.com/go-semantic-release/plugin-registry/internal/plugin"
+	"github.com/go-semantic-release/plugin-registry/internal/server"
 	"github.com/sirupsen/logrus"
 )
 

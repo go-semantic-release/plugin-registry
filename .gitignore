@@ -5,7 +5,7 @@ gsr.json
 plugin-registry
 !plugin-registry/
 
-pkg/legacy/v1/plugins.json
-pkg/legacy/v1/plugins/
+internal/legacy/v1/plugins.json
+internal/legacy/v1/plugins/
 
 infrastructure/.terraform/

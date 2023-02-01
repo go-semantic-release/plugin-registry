@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-semantic-release/plugin-registry/pkg/config"
+	"github.com/go-semantic-release/plugin-registry/internal/config"
 )
 
 func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request) {
