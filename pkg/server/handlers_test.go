@@ -102,7 +102,7 @@ func starsFirebaseEmulator() (func(), error) {
 }
 
 func createS3Client(t *testing.T) (*s3.Client, func()) {
-	tc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead && strings.HasPrefix(r.URL.Path, "/test/archives/plugins-") {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -112,14 +112,14 @@ func createS3Client(t *testing.T) (*s3.Client, func()) {
 	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
 		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 			return aws.Endpoint{
-				URL:               tc.URL,
+				URL:               ts.URL,
 				HostnameImmutable: true,
 			}, nil
 		})),
 		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
 	)
 	require.NoError(t, err)
-	return s3.NewFromConfig(s3Cfg), tc.Close
+	return s3.NewFromConfig(s3Cfg), ts.Close
 }
 
 func newTestServer(t *testing.T) (*Server, *firestore.Client, func()) {
@@ -211,7 +211,7 @@ func createPluginDoc(fsClient *firestore.Client, dlHost, fullName, latestRelease
 }
 
 func bootstrapDatabase(t *testing.T, fsClient *firestore.Client) func() {
-	tc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, "test-file")
 	}))
@@ -222,13 +222,13 @@ func bootstrapDatabase(t *testing.T, fsClient *firestore.Client) func() {
 		"hooks-goreleaser": "5.0.0",
 	}
 	for plugin, latestRelease := range allPlugins {
-		err := createPluginDoc(fsClient, tc.URL, plugin, latestRelease)
+		err := createPluginDoc(fsClient, ts.URL, plugin, latestRelease)
 		if err != nil {
 			require.NoError(t, err)
 		}
 	}
 
-	return tc.Close
+	return ts.Close
 }
 
 func TestGetPlugin(t *testing.T) {

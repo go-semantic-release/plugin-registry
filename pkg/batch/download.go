@@ -33,9 +33,10 @@ func downloadFileAndVerifyChecksum(ctx context.Context, tarWriter *tar.Writer, f
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 	err = tarWriter.WriteHeader(&tar.Header{
-		Name: fileName,
-		Mode: 0o755,
-		Size: resp.ContentLength,
+		Name:    fileName,
+		Mode:    0o755,
+		Size:    resp.ContentLength,
+		ModTime: time.Now(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to write tar header: %w", err)
