@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-semantic-release/plugin-registry/pkg/config"
+	"github.com/go-semantic-release/plugin-registry/pkg/plugin"
 	"github.com/go-semantic-release/plugin-registry/pkg/server"
 	"github.com/sirupsen/logrus"
 )
@@ -30,7 +31,10 @@ func run(log *logrus.Logger) error {
 		return err
 	}
 
-	log.Info("connecting to database...")
+	log.Infof("connecting to database (prefix=%s)...", cfg.Stage)
+	// set global collection prefix
+	plugin.CollectionPrefix = cfg.Stage
+
 	db, err := firestore.NewClient(context.Background(), "go-semantic-release")
 	if err != nil {
 		return err

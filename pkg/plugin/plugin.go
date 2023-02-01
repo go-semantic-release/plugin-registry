@@ -18,6 +18,8 @@ type Plugin struct {
 	Repo string
 }
 
+var CollectionPrefix = "dev"
+
 type fsPluginData struct {
 	*registry.Plugin
 	LatestReleaseRef *firestore.DocumentRef
@@ -31,7 +33,7 @@ func (p *Plugin) GetFullName() string {
 }
 
 func (p *Plugin) getDocRef(db *firestore.Client) *firestore.DocumentRef {
-	return db.Collection("plugins").Doc(p.GetFullName())
+	return db.Collection(CollectionPrefix + "-plugins").Doc(p.GetFullName())
 }
 
 func (p *Plugin) getVersionsColRef(db *firestore.Client) *firestore.CollectionRef {
@@ -124,7 +126,7 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 	}
 
 	plugin := p.toPlugin()
-	plugin.LatestReleaseRef = db.Doc(fmt.Sprintf("plugins/%s/versions/%s", p.GetFullName(), latestRelease))
+	plugin.LatestReleaseRef = p.getVersionDocRef(db, latestRelease)
 	_, err = p.getDocRef(db).Set(ctx, plugin)
 	return err
 }
@@ -162,6 +164,7 @@ func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry
 		return nil, dErr
 	}
 	pluginData.Plugin.LatestRelease = &latestPluginRelease
+	pluginData.Plugin.LatestRelease.UpdatedAt = res.UpdateTime
 	return pluginData.Plugin, nil
 }
 

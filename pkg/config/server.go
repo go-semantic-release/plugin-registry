@@ -15,6 +15,7 @@ import (
 )
 
 type ServerConfig struct {
+	Stage                       string `envconfig:"STAGE" default:"dev"`
 	Port                        string `envconfig:"PORT" default:"8080"`
 	BindAddress                 string `envconfig:"BIND_ADDRESS"`
 	GitHubToken                 string `envconfig:"GITHUB_TOKEN" required:"true"`

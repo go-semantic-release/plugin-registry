@@ -41,7 +41,10 @@ func (s *Server) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
-	s.writeJSON(w, map[string]string{"service": "go-semantic-release plugin registry"})
+	s.writeJSON(w, map[string]string{
+		"service": "go-semantic-release plugin registry",
+		"stage":   s.config.Stage,
+	})
 }
 
 func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, storage *s3.Client, serverCfg *config.ServerConfig) *Server {
@@ -59,8 +62,9 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 	router.Use(middleware.RealIP)
 	router.Use(server.logMiddleware)
 	router.Use(server.recoverMiddleware)
+	// router.Use(middleware.Recoverer)
 
-	router.Use(middleware.Timeout(60 * time.Second))
+	router.Use(middleware.Timeout(5 * time.Minute))
 
 	router.NotFound(server.notFoundHandler)
 	router.MethodNotAllowed(server.methodNotAllowedHandler)
