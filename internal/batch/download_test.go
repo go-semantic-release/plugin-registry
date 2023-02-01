@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,13 +76,17 @@ func TestDownloadFilesAndTarGz(t *testing.T) {
 		Plugins: plugins,
 	}
 
-	tgzFileName, err := DownloadFilesAndTarGz(context.Background(), batchResponse)
+	tgzFileName, tgzChecksum, err := DownloadFilesAndTarGz(context.Background(), batchResponse)
 	require.NoError(t, err)
 	require.NotEmpty(t, tgzFileName)
 	defer os.Remove(tgzFileName)
 
 	tgzFile, err := os.ReadFile(tgzFileName)
 	require.NoError(t, err)
+
+	tarHash := sha256.New()
+	tarHash.Write(tgzFile)
+	require.Equal(t, tgzChecksum, hex.EncodeToString(tarHash.Sum(nil)))
 
 	gzipReader, err := gzip.NewReader(bytes.NewReader(tgzFile))
 	require.NoError(t, err)

@@ -107,13 +107,14 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	// the download url is deterministic, so we can set it here
 	batchResponse.DownloadURL = s.config.GetPublicPluginCacheDownloadURL(archiveKey)
 
-	_, err = s.storage.HeadObject(r.Context(), &s3.HeadObjectInput{
+	headRes, err := s.storage.HeadObject(r.Context(), &s3.HeadObjectInput{
 		Bucket: s.config.GetBucket(),
 		Key:    &archiveKey,
 	})
 	if err == nil {
 		// the archive already exists, return the response
 		s.log.Infof("found cached archive %s", archiveKey)
+		batchResponse.DownloadChecksum = headRes.Metadata["checksum"]
 		s.setInCache(batchRequestCacheKey, batchResponse)
 		s.writeJSON(w, batchResponse)
 		return
@@ -126,13 +127,14 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.Infof("plugin archive %s not found, creating...", archiveKey)
-	tarFileName, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
+	tgzFileName, tgzChecksum, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not create plugin archive")
 		return
 	}
-	s.log.Infof("created plugin archive %s, uploading...", tarFileName)
-	tarFile, err := os.Open(tarFileName)
+	batchResponse.DownloadChecksum = tgzChecksum
+	s.log.Infof("created plugin archive %s, uploading...", tgzFileName)
+	tarFile, err := os.Open(tgzFileName)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not open plugin archive")
 		return
@@ -143,6 +145,9 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		Key:         &archiveKey,
 		Body:        tarFile,
 		ContentType: aws.String("application/gzip"),
+		Metadata: map[string]string{
+			"checksum": tgzChecksum,
+		},
 	})
 	if closeErr := tarFile.Close(); closeErr != nil {
 		s.log.Errorf("could not close plugin archive file: %v", closeErr)
@@ -153,7 +158,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.Infof("uploaded plugin archive.")
-	if rmErr := os.Remove(tarFileName); rmErr != nil {
+	if rmErr := os.Remove(tgzFileName); rmErr != nil {
 		s.log.Errorf("could not remove plugin archive file: %v", rmErr)
 	}
 

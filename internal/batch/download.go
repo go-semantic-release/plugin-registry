@@ -56,28 +56,30 @@ func downloadFileAndVerifyChecksum(ctx context.Context, tarWriter *tar.Writer, f
 	return nil
 }
 
-func DownloadFilesAndTarGz(ctx context.Context, batchResponse *registry.BatchResponse) (string, error) {
-	tarFile, err := os.CreateTemp("", "plugin-archive-*.tar.gz")
+func DownloadFilesAndTarGz(ctx context.Context, batchResponse *registry.BatchResponse) (string, string, error) {
+	tgzFile, err := os.CreateTemp("", "plugin-archive-*.tar.gz")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer tarFile.Close()
-	gzipWriter := gzip.NewWriter(tarFile)
+	defer tgzFile.Close()
+
+	tgzHash := sha256.New()
+	gzipWriter := gzip.NewWriter(io.MultiWriter(tgzFile, tgzHash))
 	tarWriter := tar.NewWriter(gzipWriter)
 	for _, plugin := range batchResponse.Plugins {
 		fileName := fmt.Sprintf("%s_%s/%s/%s/%s", batchResponse.OS, batchResponse.Arch, plugin.FullName, plugin.Version, plugin.FileName)
 		err = downloadFileAndVerifyChecksum(ctx, tarWriter, fileName, plugin.URL, plugin.Checksum)
 		if err != nil {
-			return "", fmt.Errorf("failed to add file to tar archive: %w", err)
+			return "", "", fmt.Errorf("failed to add file to tar archive: %w", err)
 		}
 	}
 	err = tarWriter.Close()
 	if err != nil {
-		return "", fmt.Errorf("failed to close tar writer: %w", err)
+		return "", "", fmt.Errorf("failed to close tar writer: %w", err)
 	}
 	err = gzipWriter.Close()
 	if err != nil {
-		return "", fmt.Errorf("failed to close gzip writer: %w", err)
+		return "", "", fmt.Errorf("failed to close gzip writer: %w", err)
 	}
-	return tarFile.Name(), nil
+	return tgzFile.Name(), hex.EncodeToString(tgzHash.Sum(nil)), nil
 }

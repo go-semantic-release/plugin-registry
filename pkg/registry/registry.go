@@ -125,11 +125,12 @@ func (b BatchResponsePlugins) Has(fullName string) bool {
 }
 
 type BatchResponse struct {
-	OS           string
-	Arch         string
-	Plugins      BatchResponsePlugins
-	DownloadHash string
-	DownloadURL  string
+	OS               string
+	Arch             string
+	Plugins          BatchResponsePlugins
+	DownloadHash     string
+	DownloadURL      string
+	DownloadChecksum string
 }
 
 func NewBatchResponse(req *BatchRequest, plugins BatchResponsePlugins) *BatchResponse {
