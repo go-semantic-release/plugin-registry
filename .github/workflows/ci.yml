@@ -54,5 +54,6 @@ jobs:
       - uses: google-github-actions/deploy-cloudrun@v1
         with:
           service: staging-plugin-registry
+          region: europe-west1
           image: gcr.io/go-semantic-release/plugin-registry:${{ steps.semrel.outputs.version }}
         if: steps.semrel.outputs.version != ''
