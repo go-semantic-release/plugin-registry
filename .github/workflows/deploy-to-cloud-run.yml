@@ -34,5 +34,3 @@ jobs:
           region: europe-west1
           service: ${{ github.event.inputs.stage }}-plugin-registry
           image: gcr.io/go-semantic-release/plugin-registry:${{ env.VERSION }}
-          labels:
-            version=${{ env.VERSION }}
