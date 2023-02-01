@@ -16,6 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var version = "dev"
+
 func setupLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetFormatter(&logrus.TextFormatter{
@@ -25,13 +27,17 @@ func setupLogger() *logrus.Logger {
 }
 
 func run(log *logrus.Logger) error {
+	log.Infof("starting plugin-registry (version=%s)", version)
 	log.Info("reading configuration...")
 	cfg, err := config.NewServerConfigFromEnv()
 	if err != nil {
 		return err
 	}
 
-	log.Infof("connecting to database (prefix=%s)...", cfg.Stage)
+	// set global version
+	cfg.Version = version
+
+	log.Infof("connecting to database (stage=%s)...", cfg.Stage)
 	// set global collection prefix
 	plugin.CollectionPrefix = cfg.Stage
 

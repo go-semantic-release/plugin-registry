@@ -44,6 +44,7 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, map[string]string{
 		"service": "go-semantic-release plugin registry",
 		"stage":   s.config.Stage,
+		"version": s.config.Version,
 	})
 }
 

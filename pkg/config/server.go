@@ -26,6 +26,7 @@ type ServerConfig struct {
 	CloudflareAccountID         string `envconfig:"CLOUDFLARE_ACCOUNT_ID" required:"true"`
 	PluginCacheHost             string `envconfig:"PLUGIN_CACHE_HOST" required:"true"`
 	DisableRequestCache         bool   `envconfig:"DISABLE_REQUEST_CACHE"`
+	Version                     string
 }
 
 func NewServerConfigFromEnv() (*ServerConfig, error) {

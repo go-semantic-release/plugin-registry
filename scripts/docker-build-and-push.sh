@@ -14,7 +14,7 @@ image_name="gcr.io/go-semantic-release/plugin-registry"
 image_name_version="$image_name:$version"
 
 echo "building image..."
-docker build -t "$image_name_version" .
+docker build --build-arg "VERSION=$version" -t "$image_name_version" .
 
 echo "pushing image..."
 docker tag "$image_name_version" "$image_name"
