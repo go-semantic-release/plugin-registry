@@ -7,3 +7,5 @@ plugin-registry
 
 pkg/legacy/v1/plugins.json
 pkg/legacy/v1/plugins/
+
+infrastructure/.terraform/
