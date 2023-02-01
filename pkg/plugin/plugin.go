@@ -26,6 +26,13 @@ type fsPluginData struct {
 	// override fields from embedded struct and prevent them from being saved in firestore
 	LatestRelease *struct{} `firestore:",omitempty"`
 	Versions      *struct{} `firestore:",omitempty"`
+	UpdatedAt     *struct{} `firestore:",omitempty"`
+}
+
+type fsPluginReleaseData struct {
+	*registry.PluginRelease
+	// override fields from embedded struct and prevent them from being saved in firestore
+	UpdatedAt *struct{} `firestore:",omitempty"`
 }
 
 func (p *Plugin) GetFullName() string {
@@ -45,7 +52,7 @@ func (p *Plugin) getVersionDocRef(db *firestore.Client, version string) *firesto
 }
 
 func (p *Plugin) savePluginRelease(ctx context.Context, db *firestore.Client, pr *registry.PluginRelease) error {
-	_, err := p.getVersionDocRef(db, pr.Version).Set(ctx, pr)
+	_, err := p.getVersionDocRef(db, pr.Version).Set(ctx, &fsPluginReleaseData{PluginRelease: pr})
 	return err
 }
 
@@ -152,7 +159,7 @@ func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry
 	if dErr := res.DataTo(&pluginData); dErr != nil {
 		return nil, dErr
 	}
-	pluginData.UpdatedAt = res.UpdateTime
+	pluginData.Plugin.UpdatedAt = res.UpdateTime
 
 	// resolve latest release
 	res, err = pluginData.LatestReleaseRef.Get(ctx)
@@ -163,8 +170,8 @@ func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry
 	if dErr := res.DataTo(&latestPluginRelease); dErr != nil {
 		return nil, dErr
 	}
+	latestPluginRelease.UpdatedAt = res.UpdateTime
 	pluginData.Plugin.LatestRelease = &latestPluginRelease
-	pluginData.Plugin.LatestRelease.UpdatedAt = res.UpdateTime
 	return pluginData.Plugin, nil
 }
 
