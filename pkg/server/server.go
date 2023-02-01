@@ -65,9 +65,11 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 	router.Handle("/api/v1/*", http.StripPrefix("/api/v1/", http.FileServer(http.FS(legacyV1.PluginIndex))))
 
 	router.Route("/api/v2/plugins", func(r chi.Router) {
-		r.Get("/", server.listPlugins)
-		r.Get("/{plugin}", server.getPlugin)
-		r.Get("/{plugin}/versions/{version}", server.getPlugin)
+		r.With(server.cacheMiddleware).Group(func(r chi.Router) {
+			r.Get("/", server.listPlugins)
+			r.Get("/{plugin}", server.getPlugin)
+			r.Get("/{plugin}/versions/{version}", server.getPlugin)
+		})
 		r.Post("/_batch", server.batchGetPlugins)
 
 		// routes to update the plugin index
