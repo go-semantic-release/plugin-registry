@@ -27,19 +27,29 @@ locals {
 }
 
 locals {
-  stages = toset(["staging"])
+  stages = toset(["staging", "production"])
   envSecrets = {
     staging = merge({
-      PLUGIN_CACHE_HOST               = "staging-plugin-cache-host"
-      GITHUB_TOKEN                    = "staging-github"
-      CLOUDFLARE_R2_BUCKET            = "staging-cloudflare-r2-bucket"
+      PLUGIN_CACHE_HOST    = "staging-plugin-cache-host"
+      GITHUB_TOKEN         = "staging-github"
+      CLOUDFLARE_R2_BUCKET = "staging-cloudflare-r2-bucket"
     }, local.defaultEnvSecrets)
+    production = merge({
+      PLUGIN_CACHE_HOST    = "production-plugin-cache-host"
+      GITHUB_TOKEN         = "production-github"
+      CLOUDFLARE_R2_BUCKET = "production-cloudflare-r2-bucket"
+    }, local.defaultEnvSecrets)
+  }
+  domains = {
+    staging    = "registry-staging.go-semantic-release.xyz"
+    production = "registry.go-semantic-release.xyz"
   }
 }
 
 module "gcr" {
-  for_each    = local.stages
-  source      = "./gcr"
-  stage        = each.value
+  for_each   = local.stages
+  source     = "./gcr"
+  stage      = each.value
   envSecrets = local.envSecrets[each.value]
+  domain     = local.domains[each.value]
 }

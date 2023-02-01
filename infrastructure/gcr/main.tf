@@ -6,6 +6,10 @@ variable "envSecrets" {
   type = map(string)
 }
 
+variable "domain" {
+  type = string
+}
+
 resource "google_cloud_run_v2_service" "default" {
   name     = "${var.stage}-plugin-registry"
   location = "europe-west1"
@@ -15,7 +19,7 @@ resource "google_cloud_run_v2_service" "default" {
     max_instance_request_concurrency = 100
 
     scaling {
-      max_instance_count = 1
+      max_instance_count = 2
     }
 
     containers {
@@ -75,4 +79,18 @@ resource "google_cloud_run_service_iam_binding" "default" {
   members = [
     "allUsers"
   ]
+}
+
+
+data "google_project" "project" {}
+
+resource "google_cloud_run_domain_mapping" "default" {
+  name     = var.domain
+  location = google_cloud_run_v2_service.default.location
+  metadata {
+    namespace = data.google_project.project.project_id
+  }
+  spec {
+    route_name = google_cloud_run_v2_service.default.name
+  }
 }
