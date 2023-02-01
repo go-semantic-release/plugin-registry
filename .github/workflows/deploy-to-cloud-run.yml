@@ -26,6 +26,7 @@ jobs:
           credentials_json: ${{ secrets.GCLOUD_AUTH }}
       - uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: ${{ github.event.inputs.stage }}-plugin-registry
           region: europe-west1
+          service: ${{ github.event.inputs.stage }}-plugin-registry
           image: gcr.io/go-semantic-release/plugin-registry:${{ env.VERSION }}
+          suffix: ${{ env.VERSION }}
