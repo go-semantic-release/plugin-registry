@@ -42,6 +42,10 @@ func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
 
 func (s *Server) cacheMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.config.DisableRequestCache {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if k, ok := s.getFromCache(s.getCacheKeyFromRequest(r)); ok {
 			w.Header().Set("X-Cache", "HIT")
 			s.writeJSON(w, k)

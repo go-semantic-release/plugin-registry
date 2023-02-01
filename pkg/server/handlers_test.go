@@ -134,8 +134,9 @@ func newTestServer(t *testing.T) (*Server, *firestore.Client, func()) {
 	s3Client, closeFn := createS3Client(t)
 
 	return New(log, fsClient, newGitHubClient(), s3Client, &config.ServerConfig{
-		AdminAccessToken:   "admin-token",
-		CloudflareR2Bucket: "test",
+		AdminAccessToken:    "admin-token",
+		CloudflareR2Bucket:  "test",
+		DisableRequestCache: true,
 	}), fsClient, closeFn
 }
 

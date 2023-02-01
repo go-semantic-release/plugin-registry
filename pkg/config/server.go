@@ -24,6 +24,7 @@ type ServerConfig struct {
 	CloudflareR2SecretAccessKey string `envconfig:"CLOUDFLARE_R2_SECRET_ACCESS_KEY" required:"true"`
 	CloudflareAccountID         string `envconfig:"CLOUDFLARE_ACCOUNT_ID" required:"true"`
 	PluginCacheHost             string `envconfig:"PLUGIN_CACHE_HOST" required:"true"`
+	DisableRequestCache         bool   `envconfig:"DISABLE_REQUEST_CACHE"`
 }
 
 func NewServerConfigFromEnv() (*ServerConfig, error) {
