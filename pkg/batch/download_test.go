@@ -77,6 +77,7 @@ func TestDownloadFilesAndTarGz(t *testing.T) {
 	tgzFileName, err := DownloadFilesAndTarGz(context.Background(), batchResponse)
 	require.NoError(t, err)
 	require.NotEmpty(t, tgzFileName)
+	defer os.Remove(tgzFileName)
 
 	tgzFile, err := os.ReadFile(tgzFileName)
 	require.NoError(t, err)
@@ -96,6 +97,4 @@ func TestDownloadFilesAndTarGz(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, testFile, fileContent)
 	}
-
-	require.NoError(t, os.Remove(tgzFileName))
 }
