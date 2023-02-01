@@ -42,12 +42,16 @@ jobs:
         id: semrel
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: google-github-actions/setup-gcloud@v1
+      - uses: google-github-actions/auth@v1
         with:
           project_id: go-semantic-release
-          service_account_key: ${{ secrets.GCLOUD_AUTH }}
+          credentials_json: ${{ secrets.GCLOUD_AUTH }}
         if: steps.semrel.outputs.version != ''
-      - run: gcloud auth configure-docker gcr.io -q
+      - uses: docker/login-action@v1
+        with:
+          registry: gcr.io
+          username: oauth2accesstoken
+          password: ${{ steps.gcloudauth.outputs.access_token }}
         if: steps.semrel.outputs.version != ''
       - run: ./scripts/docker-build-and-push.sh ${{ steps.semrel.outputs.version }}
         if: steps.semrel.outputs.version != ''
