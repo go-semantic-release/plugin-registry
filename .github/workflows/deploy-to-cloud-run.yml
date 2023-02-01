@@ -13,11 +13,13 @@ on:
         default: "latest"
 
 jobs:
-  release:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: ./scripts/resolve-version.sh ${{ github.event.inputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: google-github-actions/auth@v1
         with:
           project_id: go-semantic-release
