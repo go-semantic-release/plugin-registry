@@ -6,11 +6,16 @@ on:
       stage:
         description: "deployment stage"
         required: true
-        default: "staging"
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
       version:
-        description: "deployment version"
+        description: "image version to deploy"
         required: true
-        default: "latest"
+        type: string
+        default: latest
 
 jobs:
   deploy:
@@ -29,4 +34,5 @@ jobs:
           region: europe-west1
           service: ${{ github.event.inputs.stage }}-plugin-registry
           image: gcr.io/go-semantic-release/plugin-registry:${{ env.VERSION }}
-          suffix: ${{ env.VERSION }}
+          labels:
+            version=${{ env.VERSION }}

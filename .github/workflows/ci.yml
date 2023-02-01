@@ -56,5 +56,6 @@ jobs:
           service: staging-plugin-registry
           region: europe-west1
           image: gcr.io/go-semantic-release/plugin-registry:${{ steps.semrel.outputs.version }}
-          suffix: ${{ steps.semrel.outputs.version }}
+          labels:
+            version=${{ steps.semrel.outputs.version }}
         if: steps.semrel.outputs.version != ''
