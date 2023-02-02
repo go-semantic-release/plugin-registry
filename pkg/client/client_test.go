@@ -81,3 +81,34 @@ func TestSendBatchRequest(t *testing.T) {
 	require.Equal(t, "darwin", batchResponse.OS)
 	require.Equal(t, "amd64", batchResponse.Arch)
 }
+
+func TestUpdatePlugins(t *testing.T) {
+	reqCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "admin-token", r.Header.Get("Authorization"))
+		switch reqCount {
+		case 0:
+			assert.Equal(t, "/plugins", r.URL.Path)
+		case 1:
+			assert.Equal(t, "/plugins/provider-git", r.URL.Path)
+		case 2:
+			assert.Equal(t, "/plugins/provider-git/versions/2.0.0", r.URL.Path)
+		}
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]bool{"ok": true}))
+		reqCount++
+	}))
+	defer ts.Close()
+	c := New(ts.URL)
+
+	err := c.UpdatePlugins(context.Background(), "admin-token")
+	require.NoError(t, err)
+
+	err = c.UpdatePlugin(context.Background(), "admin-token", "provider-git")
+	require.NoError(t, err)
+
+	err = c.UpdatePluginRelease(context.Background(), "admin-token", "provider-git", "2.0.0")
+	require.NoError(t, err)
+
+	require.Equal(t, 3, reqCount)
+}
