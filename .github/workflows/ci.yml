@@ -44,8 +44,9 @@ jobs:
       - uses: go-semantic-release/action@v1
         id: semrel
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           hooks: goreleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: google-github-actions/auth@v1
         with:
           project_id: go-semantic-release
