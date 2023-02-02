@@ -15,6 +15,10 @@ resource "google_cloud_run_v2_service" "default" {
   location = "europe-west1"
   ingress  = "INGRESS_TRAFFIC_ALL"
 
+  annotations = {
+    "run.googleapis.com/launch-stage" = "BETA"
+  }
+
   template {
     max_instance_request_concurrency = 100
 
@@ -22,10 +26,15 @@ resource "google_cloud_run_v2_service" "default" {
       max_instance_count = 1
     }
 
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+    }
+
     containers {
-      image = "gcr.io/go-semantic-release/plugin-registry"
+      image = "gcr.io/go-semantic-release/plugin-registry:1.4.0"
 
       startup_probe {
+        period_seconds = 1
         http_get {
           path = "/"
         }
