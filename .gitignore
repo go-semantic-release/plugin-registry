@@ -9,3 +9,6 @@ internal/legacy/v1/plugins.json
 internal/legacy/v1/plugins/
 
 infrastructure/.terraform/
+
+plugin-registry-update
+!plugin-registry-update/

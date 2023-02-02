@@ -74,6 +74,7 @@ func (c *Client) decodeResponse(resp *http.Response, v any) error {
 		if err != nil {
 			return err
 		}
+		errResp.StatusCode = resp.StatusCode
 		return &errResp
 	}
 	err := json.NewDecoder(resp.Body).Decode(v)
