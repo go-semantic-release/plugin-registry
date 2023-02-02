@@ -28,6 +28,7 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	s.invalidateByPrefix(s.getCacheKeyPrefixFromPluginName(""))
 	s.writeJSON(w, map[string]bool{"ok": true})
 }
 
@@ -46,6 +47,8 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not update plugin")
 		return
 	}
+
+	s.invalidateByPrefix(s.getCacheKeyPrefixFromPluginName(p.GetFullName()))
 	s.writeJSON(w, map[string]bool{"ok": true})
 }
 

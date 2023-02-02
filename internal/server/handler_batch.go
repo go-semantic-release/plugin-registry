@@ -147,6 +147,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		ContentType: aws.String("application/gzip"),
 		Metadata: map[string]string{
 			"checksum": tgzChecksum,
+			"hash":     batchResponse.DownloadHash,
 		},
 	})
 	if closeErr := tarFile.Close(); closeErr != nil {
