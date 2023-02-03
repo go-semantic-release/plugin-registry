@@ -17,7 +17,7 @@ func TestGetPlugins(t *testing.T) {
 	testData := []string{"plugin1", "plugin2"}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/plugins", r.URL.Path)
+		assert.Equal(t, "/api/v2/plugins", r.URL.Path)
 		require.NoError(t, json.NewEncoder(w).Encode(testData))
 	}))
 	defer ts.Close()
@@ -38,7 +38,7 @@ func TestGetPluginRelease(t *testing.T) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/plugins/plugin1/versions/1.0.0", r.URL.Path)
+		assert.Equal(t, "/api/v2/plugins/plugin1/versions/1.0.0", r.URL.Path)
 		require.NoError(t, json.NewEncoder(w).Encode(testData))
 	}))
 	defer ts.Close()
@@ -52,7 +52,7 @@ func TestGetPluginRelease(t *testing.T) {
 func TestSendBatchRequest(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "/plugins/_batch", r.URL.Path)
+		assert.Equal(t, "/api/v2/plugins/_batch", r.URL.Path)
 		require.NoError(t, json.NewEncoder(w).Encode(&registry.BatchResponse{
 			OS:   "darwin",
 			Arch: "amd64",
@@ -89,11 +89,11 @@ func TestUpdatePlugins(t *testing.T) {
 		assert.Equal(t, "admin-token", r.Header.Get("Authorization"))
 		switch reqCount {
 		case 0:
-			assert.Equal(t, "/plugins", r.URL.Path)
+			assert.Equal(t, "/api/v2/plugins", r.URL.Path)
 		case 1:
-			assert.Equal(t, "/plugins/provider-git", r.URL.Path)
+			assert.Equal(t, "/api/v2/plugins/provider-git", r.URL.Path)
 		case 2:
-			assert.Equal(t, "/plugins/provider-git/versions/2.0.0", r.URL.Path)
+			assert.Equal(t, "/api/v2/plugins/provider-git/versions/2.0.0", r.URL.Path)
 		}
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]bool{"ok": true}))
 		reqCount++

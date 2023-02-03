@@ -16,8 +16,8 @@ import (
 var version = "dev"
 
 var defaultPluginRegistryURLs = []string{
-	"https://registry.go-semantic-release.xyz",
-	"https://registry-staging.go-semantic-release.xyz",
+	client.DefaultStagingEndpoint,
+	client.DefaultProductionEndpoint,
 }
 
 func main() {

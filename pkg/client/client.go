@@ -8,9 +8,15 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
+)
+
+const (
+	DefaultStagingEndpoint    = "https://registry-staging.go-semantic-release.xyz"
+	DefaultProductionEndpoint = "https://registry.go-semantic-release.xyz"
 )
 
 type ErrorResponse struct {
@@ -28,6 +34,10 @@ type Client struct {
 }
 
 func New(registryURL string) *Client {
+	registryURL = strings.TrimSuffix(registryURL, "/")
+	if !strings.HasSuffix(registryURL, "/api/v2") {
+		registryURL += "/api/v2"
+	}
 	return &Client{
 		registryURL: registryURL,
 		httpClient: &http.Client{
