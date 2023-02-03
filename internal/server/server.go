@@ -26,6 +26,7 @@ type Server struct {
 	storage  *s3.Client
 	config   *config.ServerConfig
 	cache    *cache.Cache
+	batchMu  sync.Mutex
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -107,6 +107,10 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	// the download url is deterministic, so we can set it here
 	batchResponse.DownloadURL = s.config.GetPublicPluginCacheDownloadURL(archiveKey)
 
+	// allow only one batch archive process at a time
+	s.batchMu.Lock()
+	defer s.batchMu.Unlock()
+
 	headRes, err := s.storage.HeadObject(r.Context(), &s3.HeadObjectInput{
 		Bucket: s.config.GetBucket(),
 		Key:    &archiveKey,
