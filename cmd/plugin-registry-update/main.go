@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/go-semantic-release/plugin-registry/pkg/client"
@@ -83,10 +82,6 @@ func run(log *logrus.Logger, cmd *cobra.Command, _ []string) error {
 	defer stop()
 
 	for _, url := range registryURLs {
-		url = strings.TrimSuffix(url, "/")
-		if !strings.HasSuffix(url, "/api/v2") {
-			url += "/api/v2"
-		}
 		log.Infof("updating plugin registry: %s", url)
 		c := client.New(url)
 		err := c.UpdatePluginRelease(ctx, adminAccessToken, pluginName, pluginVersion)
