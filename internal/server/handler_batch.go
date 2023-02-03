@@ -92,7 +92,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: this could be done in parallel
+	// resolve plugins
 	errGroup, groupCtx := errgroup.WithContext(r.Context())
 	errGroup.SetLimit(5)
 	for _, pluginResponse := range batchResponse.Plugins {
