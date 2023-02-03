@@ -79,6 +79,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 		r.With(server.cacheMiddleware).Group(func(r chi.Router) {
 			r.Get("/", server.listPlugins)
 			r.Get("/{plugin}", server.getPlugin)
+			r.Get("/{plugin}/versions", server.listPluginVersions)
 			r.Get("/{plugin}/versions/{version}", server.getPlugin)
 		})
 		r.Post("/_batch", server.batchGetPlugins)

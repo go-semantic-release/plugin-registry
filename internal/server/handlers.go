@@ -74,3 +74,20 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 	s.setInCache(s.getCacheKeyFromRequest(r), res)
 	s.writeJSON(w, res)
 }
+
+func (s *Server) listPluginVersions(w http.ResponseWriter, r *http.Request) {
+	pluginName := chi.URLParam(r, "plugin")
+	p := config.Plugins.Find(pluginName)
+	if p == nil {
+		s.writeJSONError(w, r, 404, fmt.Errorf("plugin %s not found", pluginName))
+		return
+	}
+
+	versions, err := p.GetVersions(r.Context(), s.db)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not get plugin versions")
+		return
+	}
+	s.setInCache(s.getCacheKeyFromRequest(r), versions)
+	s.writeJSON(w, versions)
+}

@@ -153,7 +153,7 @@ func (p *Plugin) Update(ctx context.Context, db *firestore.Client, ghClient *git
 	return err
 }
 
-func (p *Plugin) getVersions(ctx context.Context, db *firestore.Client) ([]string, error) {
+func (p *Plugin) GetVersions(ctx context.Context, db *firestore.Client) ([]string, error) {
 	versionRefs, err := p.getVersionsColRef(db).DocumentRefs(ctx).GetAll()
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (p *Plugin) Get(ctx context.Context, db *firestore.Client) (*registry.Plugi
 	if err != nil {
 		return nil, fmt.Errorf("failed to get plugin: %w", err)
 	}
-	versions, err := p.getVersions(ctx, db)
+	versions, err := p.GetVersions(ctx, db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get versions: %w", err)
 	}
@@ -234,7 +234,7 @@ func (p *Plugin) GetReleaseWithVersionConstraint(ctx context.Context, db *firest
 		return nil, fmt.Errorf("failed to parse version constraint: %w", err)
 	}
 
-	versions, err := p.getVersions(ctx, db)
+	versions, err := p.GetVersions(ctx, db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get versions: %w", err)
 	}
