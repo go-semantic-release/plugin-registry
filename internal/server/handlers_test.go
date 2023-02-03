@@ -252,6 +252,23 @@ func TestGetPlugin(t *testing.T) {
 	require.Equal(t, "provider-git-darwin-amd64", plugin.LatestRelease.Assets["darwin/amd64"].FileName)
 }
 
+func TestGetPluginVersions(t *testing.T) {
+	killFirebaseEmulator, err := starsFirebaseEmulator()
+	require.NoError(t, err)
+	defer killFirebaseEmulator()
+	s, fsClient, closeFn := newTestServer(t)
+	defer closeFn()
+
+	dlServerCloseFn := bootstrapDatabase(t, fsClient)
+	defer dlServerCloseFn()
+
+	rr := sendRequest(s, "GET", "/api/v2/plugins/provider-git/versions", nil)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var pluginVersion []string
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &pluginVersion))
+	require.Len(t, pluginVersion, 5)
+}
+
 func TestUpdateAndGetPlugin(t *testing.T) {
 	killFirebaseEmulator, err := starsFirebaseEmulator()
 	require.NoError(t, err)
