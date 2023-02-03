@@ -45,6 +45,12 @@ func getAllGitHubReleases(ctx context.Context, ghClient *github.Client, fullRepo
 			if _, err := semver.NewVersion(release.GetTagName()); err != nil {
 				continue
 			}
+
+			// release has no assets attached
+			if len(release.Assets) == 0 {
+				continue
+			}
+
 			ret = append(ret, release)
 		}
 		if resp.NextPage == 0 {
@@ -66,6 +72,9 @@ func getGitHubRelease(ctx context.Context, ghClient *github.Client, fullRepo, ta
 	}
 	if _, err := semver.NewVersion(release.GetTagName()); err != nil {
 		return nil, fmt.Errorf("release is not a valid semver version: %w", err)
+	}
+	if len(release.Assets) == 0 {
+		return nil, fmt.Errorf("release has no assets")
 	}
 	return release, nil
 }
