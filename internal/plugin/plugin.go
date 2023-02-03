@@ -13,9 +13,10 @@ import (
 )
 
 type Plugin struct {
-	Type string
-	Name string
-	Repo string
+	Type    string
+	Name    string
+	Aliases []string
+	Repo    string
 }
 
 var CollectionPrefix = "dev"
@@ -37,6 +38,14 @@ type fsPluginReleaseData struct {
 
 func (p *Plugin) GetFullName() string {
 	return fmt.Sprintf("%s-%s", p.Type, p.Name)
+}
+
+func (p *Plugin) GetAliases() []string {
+	aliases := make([]string, len(p.Aliases))
+	for i, aName := range p.Aliases {
+		aliases[i] = fmt.Sprintf("%s-%s", p.Type, aName)
+	}
+	return aliases
 }
 
 func (p *Plugin) getDocRef(db *firestore.Client) *firestore.DocumentRef {
@@ -253,9 +262,16 @@ func (p *Plugin) GetRelease(ctx context.Context, db *firestore.Client, version s
 type Plugins []*Plugin
 
 func (l Plugins) Find(name string) *Plugin {
+	name = strings.ToLower(name)
 	for _, p := range l {
-		if p.GetFullName() == strings.ToLower(name) {
+		if p.GetFullName() == name {
 			return p
+		}
+		// check aliases
+		for _, alias := range p.GetAliases() {
+			if alias == name {
+				return p
+			}
 		}
 	}
 	return nil

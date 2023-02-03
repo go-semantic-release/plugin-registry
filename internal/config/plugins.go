@@ -19,9 +19,10 @@ var Plugins = plugin.Plugins{
 		Repo: "go-semantic-release/changelog-generator-default",
 	},
 	{
-		Type: "commit-analyzer",
-		Name: "default",
-		Repo: "go-semantic-release/commit-analyzer-cz",
+		Type:    "commit-analyzer",
+		Name:    "cz",
+		Aliases: []string{"default"},
+		Repo:    "go-semantic-release/commit-analyzer-cz",
 	},
 	{
 		Type: "condition",

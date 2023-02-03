@@ -75,7 +75,7 @@ func run(log *logrus.Logger, cmd *cobra.Command, _ []string) error {
 	if fullUpdate {
 		log.Warn("triggering full registry update...")
 	} else {
-		log.Infof("triggering update for plugin: %s@%s.", pluginName, pluginVersion)
+		log.Infof("triggering update for plugin: %s@%s", pluginName, pluginVersion)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
