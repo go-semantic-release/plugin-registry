@@ -68,4 +68,9 @@ var Plugins = plugin.Plugins{
 		Name: "npm-binary-releaser",
 		Repo: "go-semantic-release/hooks-npm-binary-releaser",
 	},
+	{
+		Type: "hooks",
+		Name: "plugin-registry-update",
+		Repo: "go-semantic-release/hooks-plugin-registry-update",
+	},
 }
