@@ -34,9 +34,9 @@ func newGitHubClient() *github.Client {
 		mock.WithRequestMatch(
 			mock.GetReposReleasesByOwnerByRepo,
 			[]*github.RepositoryRelease{
-				{Draft: github.Bool(false), TagName: github.String("v1.0.0")},
-				{Draft: github.Bool(false), TagName: github.String("v1.0.1")},
-				{Draft: github.Bool(true), TagName: github.String("v2.0.0-beta")},
+				{Draft: github.Bool(false), TagName: github.String("v1.0.0"), Assets: []*github.ReleaseAsset{{}}},
+				{Draft: github.Bool(false), TagName: github.String("v1.0.1"), Assets: []*github.ReleaseAsset{{}}},
+				{Draft: github.Bool(true), TagName: github.String("v2.0.0-beta"), Assets: []*github.ReleaseAsset{{}}},
 				{
 					Draft:   github.Bool(false),
 					TagName: github.String("v2.0.0"),
@@ -57,9 +57,11 @@ func newGitHubClient() *github.Client {
 			mock.GetReposReleasesLatestByOwnerByRepo,
 			&github.RepositoryRelease{
 				TagName: github.String("v2.0.0"),
+				Assets:  []*github.ReleaseAsset{{}},
 			},
 			&github.RepositoryRelease{
 				TagName: github.String("v3.0.0"),
+				Assets:  []*github.ReleaseAsset{{}},
 			},
 		),
 		mock.WithRequestMatch(
