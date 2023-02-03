@@ -16,7 +16,17 @@ import (
 	"github.com/go-semantic-release/plugin-registry/internal/batch"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
+	"golang.org/x/sync/errgroup"
 )
+
+type pluginBatchError struct {
+	PluginName string
+	Err        error
+}
+
+func (e *pluginBatchError) Error() string {
+	return fmt.Sprintf("plugin batch error (%s): %s", e.PluginName, e.Err.Error())
+}
 
 func validateAndCreatePluginResponses(batchRequest *registry.BatchRequest) (registry.BatchResponsePlugins, error) {
 	err := batchRequest.Validate()
@@ -82,23 +92,42 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: this could be done in parallel
+	errGroup, groupCtx := errgroup.WithContext(r.Context())
+	errGroup.SetLimit(5)
 	for _, pluginResponse := range batchResponse.Plugins {
-		p := config.Plugins.Find(pluginResponse.FullName)
-		foundRelease, rErr := p.GetReleaseWithVersionConstraint(r.Context(), s.db, pluginResponse.VersionConstraint)
-		if rErr != nil {
-			s.writeJSONError(w, r, http.StatusBadRequest, rErr, fmt.Sprintf("could not resolve plugin %s", pluginResponse.FullName))
-			return
-		}
-		foundAsset := foundRelease.Assets[batchResponse.GetOSArch()]
-		if foundAsset == nil {
-			s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("could not find %s asset for plugin %s", batchResponse.GetOSArch(), pluginResponse.FullName))
-			return
-		}
-
-		pluginResponse.Version = foundRelease.Version
-		pluginResponse.FileName = foundAsset.FileName
-		pluginResponse.URL = foundAsset.URL
-		pluginResponse.Checksum = foundAsset.Checksum
+		pluginResponse := pluginResponse
+		errGroup.Go(func() error {
+			p := config.Plugins.Find(pluginResponse.FullName)
+			foundRelease, rErr := p.GetReleaseWithVersionConstraint(groupCtx, s.db, pluginResponse.VersionConstraint)
+			if rErr != nil {
+				return &pluginBatchError{
+					PluginName: pluginResponse.FullName,
+					Err:        rErr,
+				}
+			}
+			foundAsset := foundRelease.Assets[batchResponse.GetOSArch()]
+			if foundAsset == nil {
+				return &pluginBatchError{
+					PluginName: pluginResponse.FullName,
+					Err:        fmt.Errorf("could not find %s asset", batchResponse.GetOSArch()),
+				}
+			}
+			pluginResponse.Version = foundRelease.Version
+			pluginResponse.FileName = foundAsset.FileName
+			pluginResponse.URL = foundAsset.URL
+			pluginResponse.Checksum = foundAsset.Checksum
+			return nil
+		})
+	}
+	err = errGroup.Wait()
+	pbErr := &pluginBatchError{}
+	if errors.As(err, &pbErr) {
+		s.writeJSONError(w, r, http.StatusBadRequest, pbErr, fmt.Sprintf("could not resolve plugin %s", pbErr.PluginName))
+		return
+	} else if err != nil {
+		s.writeJSONError(w, r, http.StatusBadRequest, err, "could not resolve plugins")
+		return
 	}
 
 	// calculate the hash of the response, this now includes the plugin versions
@@ -108,6 +137,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	batchResponse.DownloadURL = s.config.GetPublicPluginCacheDownloadURL(archiveKey)
 
 	// allow only one batch archive process at a time
+	// TODO: this might be to conservative, we could allow multiple archives to be created at the same time
 	s.batchMu.Lock()
 	defer s.batchMu.Unlock()
 

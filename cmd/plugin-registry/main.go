@@ -37,6 +37,10 @@ func run(log *logrus.Logger) error {
 	// set global version
 	cfg.Version = version
 
+	if cfg.DisableRequestCache {
+		log.Warn("request cache disabled")
+	}
+
 	log.Infof("connecting to database (stage=%s)...", cfg.Stage)
 	// set global collection prefix
 	plugin.CollectionPrefix = cfg.Stage
