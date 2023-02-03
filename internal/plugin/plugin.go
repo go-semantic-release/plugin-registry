@@ -92,9 +92,15 @@ func (p *Plugin) getLatestReleaseFromGitHub(ctx context.Context, ghClient *githu
 	if err != nil {
 		return "", err
 	}
+	if release.GetDraft() {
+		return "", fmt.Errorf("release is a draft")
+	}
 	lrVersion, err := semver.NewVersion(release.GetTagName())
 	if err != nil {
 		return "", err
+	}
+	if len(release.Assets) == 0 {
+		return "", fmt.Errorf("release has no assets")
 	}
 	return lrVersion.String(), nil
 }
