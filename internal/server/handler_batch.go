@@ -137,9 +137,12 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	batchResponse.DownloadURL = s.config.GetPublicPluginCacheDownloadURL(archiveKey)
 
 	// allow only one batch archive process at a time
-	// TODO: this might be to conservative, we could allow multiple archives to be created at the same time
-	s.batchMu.Lock()
-	defer s.batchMu.Unlock()
+	err = s.batchArchiveSemaphore.Acquire(r.Context(), 1)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusTooManyRequests, err, "could not acquire semaphore")
+		return
+	}
+	defer s.batchArchiveSemaphore.Release(1)
 
 	headRes, err := s.storage.HeadObject(r.Context(), &s3.HeadObjectInput{
 		Bucket: s.config.GetBucket(),

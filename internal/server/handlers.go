@@ -17,9 +17,14 @@ func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request) {
-	s.ghMutex.Lock()
-	defer s.ghMutex.Unlock()
-	s.log.Warn("updating all plugins")
+	err := s.ghSemaphore.Acquire(r.Context(), 1)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusTooManyRequests, err, "could not acquire semaphore")
+		return
+	}
+	defer s.ghSemaphore.Release(1)
+
+	s.log.Warn("updating all plugins...")
 	for _, p := range config.Plugins {
 		s.log.Infof("updating plugin %s", p.GetFullName())
 		err := p.Update(r.Context(), s.db, s.ghClient, "")
@@ -33,8 +38,13 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
-	s.ghMutex.Lock()
-	defer s.ghMutex.Unlock()
+	err := s.ghSemaphore.Acquire(r.Context(), 1)
+	if err != nil {
+		s.writeJSONError(w, r, http.StatusTooManyRequests, err, "could not acquire semaphore")
+		return
+	}
+	defer s.ghSemaphore.Release(1)
+
 	pluginVersion := chi.URLParam(r, "version")
 	pluginName := chi.URLParam(r, "plugin")
 	p := config.Plugins.Find(pluginName)

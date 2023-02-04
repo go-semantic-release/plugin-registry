@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -15,6 +14,7 @@ import (
 	"github.com/google/go-github/v50/github"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 )
 
 type Server struct {
@@ -22,11 +22,12 @@ type Server struct {
 	log      *logrus.Logger
 	db       *firestore.Client
 	ghClient *github.Client
-	ghMutex  sync.Mutex
 	storage  *s3.Client
 	config   *config.ServerConfig
 	cache    *cache.Cache
-	batchMu  sync.Mutex
+
+	ghSemaphore           *semaphore.Weighted
+	batchArchiveSemaphore *semaphore.Weighted
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -52,13 +53,15 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, storage *s3.Client, serverCfg *config.ServerConfig) *Server {
 	router := chi.NewRouter()
 	server := &Server{
-		router:   router,
-		log:      log,
-		db:       db,
-		ghClient: ghClient,
-		storage:  storage,
-		config:   serverCfg,
-		cache:    cache.New(5*time.Minute, 10*time.Minute),
+		router:                router,
+		log:                   log,
+		db:                    db,
+		ghClient:              ghClient,
+		storage:               storage,
+		config:                serverCfg,
+		cache:                 cache.New(5*time.Minute, 10*time.Minute),
+		ghSemaphore:           semaphore.NewWeighted(1),
+		batchArchiveSemaphore: semaphore.NewWeighted(1),
 	}
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
