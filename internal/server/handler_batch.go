@@ -163,7 +163,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Infof("plugin archive %s not found, creating...", archiveKey)
+	s.log.Infof("plugin archive %s not found, creating (%d plugins for %s)...", archiveKey, len(batchResponse.Plugins), batchResponse.GetOSArch())
 	tgzFileName, tgzChecksum, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not create plugin archive")
@@ -185,6 +185,8 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		Metadata: map[string]string{
 			"checksum": tgzChecksum,
 			"hash":     batchResponse.DownloadHash,
+			"os":       batchResponse.OS,
+			"arch":     batchResponse.Arch,
 		},
 	})
 	if closeErr := tarFile.Close(); closeErr != nil {
