@@ -30,13 +30,16 @@ import (
 )
 
 func newGitHubClient() *github.Client {
+	exampleAssets := []*github.ReleaseAsset{
+		{Name: github.String("test_linux_amd64"), BrowserDownloadURL: github.String("https://example.com/test_linux_amd64")},
+	}
 	mockedHTTPClient := mock.NewMockedHTTPClient(
 		mock.WithRequestMatch(
 			mock.GetReposReleasesByOwnerByRepo,
 			[]*github.RepositoryRelease{
-				{Draft: github.Bool(false), TagName: github.String("v1.0.0"), Assets: []*github.ReleaseAsset{{}}},
-				{Draft: github.Bool(false), TagName: github.String("v1.0.1"), Assets: []*github.ReleaseAsset{{}}},
-				{Draft: github.Bool(true), TagName: github.String("v2.0.0-beta"), Assets: []*github.ReleaseAsset{{}}},
+				{Draft: github.Bool(false), TagName: github.String("v1.0.0"), Assets: exampleAssets},
+				{Draft: github.Bool(false), TagName: github.String("v1.0.1"), Assets: exampleAssets},
+				{Draft: github.Bool(true), TagName: github.String("v2.0.0-beta"), Assets: exampleAssets},
 				{
 					Draft:   github.Bool(false),
 					TagName: github.String("v2.0.0"),
@@ -57,11 +60,15 @@ func newGitHubClient() *github.Client {
 			mock.GetReposReleasesLatestByOwnerByRepo,
 			&github.RepositoryRelease{
 				TagName: github.String("v2.0.0"),
-				Assets:  []*github.ReleaseAsset{{}},
+				Assets:  exampleAssets,
 			},
 			&github.RepositoryRelease{
 				TagName: github.String("v3.0.0"),
-				Assets:  []*github.ReleaseAsset{{}},
+				Assets:  exampleAssets,
+			},
+			&github.RepositoryRelease{
+				TagName: github.String("v3.0.0"),
+				Assets:  exampleAssets,
 			},
 		),
 		mock.WithRequestMatch(
@@ -422,4 +429,13 @@ func TestBatchEndpointBadRequests(t *testing.T) {
 	})
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 	require.Contains(t, decodeError(t, rr.Body.Bytes()), "could not resolve")
+}
+
+func TestDownloadLatestSemRel(t *testing.T) {
+	s, _, closeFn := newTestServer(t)
+	defer closeFn()
+
+	rr := sendRequest(s, "GET", "/downloads/linux/amd64/semantic-release", nil)
+	require.Equal(t, http.StatusFound, rr.Code)
+	require.Equal(t, "https://example.com/test_linux_amd64", rr.Header().Get("Location"))
 }

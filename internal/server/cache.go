@@ -16,6 +16,7 @@ type (
 const (
 	cacheKeyPrefixBatchRequest cacheKeyPrefix = "batch"
 	cacheKeyPrefixRequest      cacheKeyPrefix = "request"
+	cacheKeyPrefixGitHub       cacheKeyPrefix = "github"
 )
 
 func (s *Server) getCacheKeyFromRequest(r *http.Request) cacheKey {

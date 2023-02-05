@@ -50,6 +50,26 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) apiV2Routes(r chi.Router) {
+	r.Route("/plugins", func(r chi.Router) {
+		r.With(s.cacheMiddleware).Group(func(r chi.Router) {
+			r.Get("/", s.listPlugins)
+			r.Get("/{plugin}", s.getPlugin)
+			r.Get("/{plugin}/versions", s.listPluginVersions)
+			r.Get("/{plugin}/versions/{version}", s.getPlugin)
+		})
+
+		r.Post("/_batch", s.batchGetPlugins)
+
+		// routes to update the plugin index
+		r.With(s.authMiddleware).Group(func(r chi.Router) {
+			r.Put("/", s.updateAllPlugins)
+			r.Put("/{plugin}", s.updatePlugin)
+			r.Put("/{plugin}/versions/{version}", s.updatePlugin)
+		})
+	})
+}
+
 func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, storage *s3.Client, serverCfg *config.ServerConfig) *Server {
 	router := chi.NewRouter()
 	server := &Server{
@@ -79,22 +99,10 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 	// serve legacy API
 	router.Handle("/api/v1/*", http.StripPrefix("/api/v1/", http.FileServer(http.FS(legacyV1.PluginIndex))))
 
-	router.Route("/api/v2/plugins", func(r chi.Router) {
-		r.With(server.cacheMiddleware).Group(func(r chi.Router) {
-			r.Get("/", server.listPlugins)
-			r.Get("/{plugin}", server.getPlugin)
-			r.Get("/{plugin}/versions", server.listPluginVersions)
-			r.Get("/{plugin}/versions/{version}", server.getPlugin)
-		})
-		r.Post("/_batch", server.batchGetPlugins)
+	router.Route("/api/v2", server.apiV2Routes)
 
-		// routes to update the plugin index
-		r.With(server.authMiddleware).Group(func(r chi.Router) {
-			r.Put("/", server.updateAllPlugins)
-			r.Put("/{plugin}", server.updatePlugin)
-			r.Put("/{plugin}/versions/{version}", server.updatePlugin)
-		})
-	})
+	// downloads route
+	router.Get("/downloads/{os}/{arch}/semantic-release", server.downloadLatestSemRelBinary)
 
 	return server
 }

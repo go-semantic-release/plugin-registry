@@ -33,11 +33,25 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	s.invalidateByPrefix(s.getCacheKeyPrefixFromPluginName(""))
 	s.writeJSON(w, map[string]bool{"ok": true})
 }
 
 func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
+	pluginVersion := chi.URLParam(r, "version")
+	pluginName := chi.URLParam(r, "plugin")
+	if pluginName == "" {
+		s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("plugin name is missing"))
+		return
+	}
+	p := config.Plugins.Find(pluginName)
+	if p == nil {
+		s.writeJSONError(w, r, http.StatusNotFound, fmt.Errorf("plugin %s not found", pluginName))
+		return
+	}
+	s.log.Infof("updating plugin %s@%s", p.GetFullName(), pluginVersion)
+
 	err := s.ghSemaphore.Acquire(r.Context(), 1)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusTooManyRequests, err, "could not acquire semaphore")
@@ -45,14 +59,6 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.ghSemaphore.Release(1)
 
-	pluginVersion := chi.URLParam(r, "version")
-	pluginName := chi.URLParam(r, "plugin")
-	p := config.Plugins.Find(pluginName)
-	if p == nil {
-		s.writeJSONError(w, r, 404, fmt.Errorf("plugin %s not found", pluginName))
-		return
-	}
-	s.log.Infof("updating plugin %s@%s", p.GetFullName(), pluginVersion)
 	if err := p.Update(r.Context(), s.db, s.ghClient, pluginVersion); err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not update plugin")
 		return
@@ -65,9 +71,13 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 	pluginVersion := chi.URLParam(r, "version")
 	pluginName := chi.URLParam(r, "plugin")
+	if pluginName == "" {
+		s.writeJSONError(w, r, http.StatusBadRequest, fmt.Errorf("plugin name is missing"))
+		return
+	}
 	p := config.Plugins.Find(pluginName)
 	if p == nil {
-		s.writeJSONError(w, r, 404, fmt.Errorf("plugin %s not found", pluginName))
+		s.writeJSONError(w, r, http.StatusNotFound, fmt.Errorf("plugin %s not found", pluginName))
 		return
 	}
 	var err error
@@ -89,7 +99,7 @@ func (s *Server) listPluginVersions(w http.ResponseWriter, r *http.Request) {
 	pluginName := chi.URLParam(r, "plugin")
 	p := config.Plugins.Find(pluginName)
 	if p == nil {
-		s.writeJSONError(w, r, 404, fmt.Errorf("plugin %s not found", pluginName))
+		s.writeJSONError(w, r, http.StatusNotFound, fmt.Errorf("plugin %s not found", pluginName))
 		return
 	}
 
