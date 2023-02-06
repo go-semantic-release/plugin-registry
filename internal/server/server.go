@@ -85,6 +85,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 	}
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
+	router.Use(middleware.Heartbeat("/ping"))
 	router.Use(server.logMiddleware)
 	router.Use(server.recoverMiddleware)
 	// router.Use(middleware.Recoverer)
