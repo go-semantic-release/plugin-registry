@@ -6,6 +6,7 @@ builds:
       - linux_arm64
       - darwin_arm64
     main: ./cmd/plugin-registry-update/
+    binary: plugin-registry-update
     flags:
       - -trimpath
     ldflags:
