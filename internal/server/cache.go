@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/patrickmn/go-cache"
 )
@@ -35,8 +36,12 @@ func (s *Server) getFromCache(k cacheKey) (any, bool) {
 	return s.cache.Get(string(k))
 }
 
-func (s *Server) setInCache(k cacheKey, v any) {
-	s.cache.Set(string(k), v, cache.DefaultExpiration)
+func (s *Server) setInCache(k cacheKey, v any, expiration ...time.Duration) {
+	exp := cache.DefaultExpiration
+	if len(expiration) > 0 {
+		exp = expiration[0]
+	}
+	s.cache.Set(string(k), v, exp)
 }
 
 func (s *Server) invalidateByPrefix(prefix cacheKey) {

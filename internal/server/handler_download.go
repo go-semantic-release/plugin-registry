@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/go-github/v50/github"
@@ -27,7 +28,7 @@ func (s *Server) getLatestSemRelRelease(ctx context.Context) (*github.Repository
 	if err != nil {
 		return nil, err
 	}
-	s.setInCache(semrelCacheKey, latestRelease)
+	s.setInCache(semrelCacheKey, latestRelease, time.Minute*30)
 	return latestRelease, nil
 }
 

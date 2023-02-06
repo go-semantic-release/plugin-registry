@@ -79,7 +79,7 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 		ghClient:              ghClient,
 		storage:               storage,
 		config:                serverCfg,
-		cache:                 cache.New(5*time.Minute, 10*time.Minute),
+		cache:                 cache.New(15*time.Minute, 30*time.Minute),
 		ghSemaphore:           semaphore.NewWeighted(1),
 		batchArchiveSemaphore: semaphore.NewWeighted(1),
 	}
