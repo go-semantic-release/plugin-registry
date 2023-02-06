@@ -32,18 +32,18 @@ resource "google_cloud_run_v2_service" "default" {
 #    }
 
     containers {
-      image = "gcr.io/go-semantic-release/plugin-registry:1.12.0"
+      image = "gcr.io/go-semantic-release/plugin-registry:1.20.0"
 
       startup_probe {
         period_seconds = 1
         http_get {
-          path = "/"
+          path = "/ping"
         }
       }
 
       liveness_probe {
         http_get {
-          path = "/"
+          path = "/ping"
         }
       }
 
