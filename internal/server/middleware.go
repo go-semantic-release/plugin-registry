@@ -3,15 +3,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"strings"
-
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/sirupsen/logrus"
-)
-
-var (
-	LogFieldRequestID   = "request_id"
-	LogFieldHTTPRequest = "httpRequest"
 )
 
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
@@ -21,9 +12,7 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if r.Header.Get("Authorization") != s.config.AdminAccessToken {
-			s.log.
-				WithField(LogFieldRequestID, middleware.GetReqID(r.Context())).
-				Warnf("invalid access token from %s", r.RemoteAddr)
+			s.requestLogger(r).Warnf("invalid access token from %s", r.RemoteAddr)
 			s.writeJSONError(w, r, http.StatusUnauthorized, fmt.Errorf("invalid access token"))
 			return
 		}
@@ -33,17 +22,7 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 
 func (s *Server) logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		remoteIP, _, _ := strings.Cut(r.RemoteAddr, ":")
-		s.log.
-			WithFields(logrus.Fields{
-				LogFieldRequestID: middleware.GetReqID(r.Context()),
-				LogFieldHTTPRequest: map[string]string{
-					"requestMethod": r.Method,
-					"requestUrl":    r.URL.EscapedPath(),
-					"remoteIp":      remoteIP,
-				},
-			}).
-			Infof("%s %s (%s)", r.Method, r.URL.EscapedPath(), r.RemoteAddr)
+		s.requestLogger(r).Infof("%s %s (%s)", r.Method, r.URL.EscapedPath(), r.RemoteAddr)
 		next.ServeHTTP(w, r)
 	})
 }

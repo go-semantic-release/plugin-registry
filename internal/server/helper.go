@@ -23,14 +23,7 @@ func (s *Server) writeJSON(w http.ResponseWriter, d any) {
 
 func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, statusCode int, err error, alternativeMessage ...string) {
 	errMsg := err.Error()
-	s.log.WithFields(logrus.Fields{
-		LogFieldRequestID: middleware.GetReqID(r.Context()),
-		LogFieldHTTPRequest: map[string]any{
-			"requestMethod": r.Method,
-			"requestUrl":    r.URL.EscapedPath(),
-			"status":        statusCode,
-		},
-	}).Errorf("error: %s", errMsg)
+	s.requestLogger(r).Errorf("error(status=%d): %s", statusCode, errMsg)
 
 	s.setContentTypeJSON(w)
 	w.WriteHeader(statusCode)
@@ -42,11 +35,5 @@ func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, statusCo
 }
 
 func (s *Server) requestLogger(r *http.Request) *logrus.Entry {
-	return s.log.WithFields(logrus.Fields{
-		LogFieldRequestID: middleware.GetReqID(r.Context()),
-		LogFieldHTTPRequest: map[string]any{
-			"requestMethod": r.Method,
-			"requestUrl":    r.URL.EscapedPath(),
-		},
-	})
+	return s.log.WithField("request_id", middleware.GetReqID(r.Context()))
 }
