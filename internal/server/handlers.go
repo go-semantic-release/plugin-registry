@@ -24,9 +24,10 @@ func (s *Server) updateAllPlugins(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.ghSemaphore.Release(1)
 
-	s.log.Warn("updating all plugins...")
+	reqLogger := s.requestLogger(r)
+	reqLogger.Warn("updating all plugins...")
 	for _, p := range config.Plugins {
-		s.log.Infof("updating plugin %s", p.GetFullName())
+		reqLogger.Infof("updating plugin %s", p.GetFullName())
 		err := p.Update(r.Context(), s.db, s.ghClient, "")
 		if err != nil {
 			s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not update plugin")
@@ -50,7 +51,8 @@ func (s *Server) updatePlugin(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusNotFound, fmt.Errorf("plugin %s not found", pluginName))
 		return
 	}
-	s.log.Infof("updating plugin %s@%s", p.GetFullName(), pluginVersion)
+	reqLogger := s.requestLogger(r)
+	reqLogger.Infof("updating plugin %s@%s", p.GetFullName(), pluginVersion)
 
 	err := s.ghSemaphore.Acquire(r.Context(), 1)
 	if err != nil {
@@ -80,6 +82,7 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusNotFound, fmt.Errorf("plugin %s not found", pluginName))
 		return
 	}
+
 	var err error
 	var res any
 	if pluginVersion == "" {
@@ -91,6 +94,7 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not get plugin")
 		return
 	}
+
 	s.setInCache(s.getCacheKeyFromRequest(r), res)
 	s.writeJSON(w, res)
 }
@@ -108,6 +112,7 @@ func (s *Server) listPluginVersions(w http.ResponseWriter, r *http.Request) {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not get plugin versions")
 		return
 	}
+
 	s.setInCache(s.getCacheKeyFromRequest(r), versions)
 	s.writeJSON(w, versions)
 }

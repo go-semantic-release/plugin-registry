@@ -81,13 +81,14 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reqLogger := s.requestLogger(r)
 	batchResponse := registry.NewBatchResponse(batchRequest, pluginResponses)
 
 	// hash the batch request without the resolved versions
 	batchRequestCacheKey := s.getCacheKeyWithPrefix(cacheKeyPrefixBatchRequest, hex.EncodeToString(batchResponse.Hash()))
 	cachedBatchResponse, found := s.getFromCache(batchRequestCacheKey)
 	if found {
-		s.log.Infof("found cached batch response for %s", batchRequestCacheKey)
+		reqLogger.Infof("found cached batch response for %s", batchRequestCacheKey)
 		s.writeJSON(w, cachedBatchResponse)
 		return
 	}
@@ -150,7 +151,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 	})
 	if err == nil {
 		// the archive already exists, return the response
-		s.log.Infof("found cached archive %s", archiveKey)
+		reqLogger.Infof("found cached archive %s", archiveKey)
 		batchResponse.DownloadChecksum = headRes.Metadata["checksum"]
 		s.setInCache(batchRequestCacheKey, batchResponse)
 		s.writeJSON(w, batchResponse)
@@ -163,14 +164,14 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Infof("plugin archive %s not found, creating (%d plugins for %s)...", archiveKey, len(batchResponse.Plugins), batchResponse.GetOSArch())
+	reqLogger.Infof("plugin archive %s not found, creating (%d plugins for %s)...", archiveKey, len(batchResponse.Plugins), batchResponse.GetOSArch())
 	tgzFileName, tgzChecksum, err := batch.DownloadFilesAndTarGz(r.Context(), batchResponse)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not create plugin archive")
 		return
 	}
 	batchResponse.DownloadChecksum = tgzChecksum
-	s.log.Infof("created plugin archive %s, uploading...", tgzFileName)
+	reqLogger.Infof("created plugin archive %s, uploading...", tgzFileName)
 	tarFile, err := os.Open(tgzFileName)
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not open plugin archive")
@@ -190,16 +191,16 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if closeErr := tarFile.Close(); closeErr != nil {
-		s.log.Errorf("could not close plugin archive file: %v", closeErr)
+		reqLogger.Errorf("could not close plugin archive file: %v", closeErr)
 	}
 	if err != nil {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not upload plugin archive")
 		return
 	}
 
-	s.log.Infof("uploaded plugin archive.")
+	reqLogger.Infof("uploaded plugin archive.")
 	if rmErr := os.Remove(tgzFileName); rmErr != nil {
-		s.log.Errorf("could not remove plugin archive file: %v", rmErr)
+		reqLogger.Errorf("could not remove plugin archive file: %v", rmErr)
 	}
 
 	s.setInCache(batchRequestCacheKey, batchResponse)

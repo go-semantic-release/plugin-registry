@@ -20,9 +20,20 @@ var version = "dev"
 
 func setupLogger() *logrus.Logger {
 	log := logrus.New()
-	log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	if os.Getenv("DEBUG") == "true" {
+		log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp: true,
+		})
+	} else {
+		log.SetFormatter(&logrus.JSONFormatter{
+			FieldMap: logrus.FieldMap{
+				logrus.FieldKeyLevel: "severity",
+				logrus.FieldKeyMsg:   "message",
+				logrus.FieldKeyTime:  "timestamp",
+			},
+		})
+	}
+
 	return log
 }
 

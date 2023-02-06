@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 func (s *Server) setContentTypeJSON(w http.ResponseWriter) {
@@ -22,7 +23,14 @@ func (s *Server) writeJSON(w http.ResponseWriter, d any) {
 
 func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, statusCode int, err error, alternativeMessage ...string) {
 	errMsg := err.Error()
-	s.log.Errorf("[%s] error(status=%d): %s", middleware.GetReqID(r.Context()), statusCode, errMsg)
+	s.log.WithFields(logrus.Fields{
+		LogFieldRequestID: middleware.GetReqID(r.Context()),
+		LogFieldHTTPRequest: map[string]any{
+			"requestMethod": r.Method,
+			"requestUrl":    r.URL.EscapedPath(),
+			"status":        statusCode,
+		},
+	}).Errorf("error: %s", errMsg)
 
 	s.setContentTypeJSON(w)
 	w.WriteHeader(statusCode)
@@ -31,4 +39,14 @@ func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, statusCo
 		errMsg = strings.Join(alternativeMessage, " ")
 	}
 	s.writeJSON(w, map[string]string{"error": errMsg})
+}
+
+func (s *Server) requestLogger(r *http.Request) *logrus.Entry {
+	return s.log.WithFields(logrus.Fields{
+		LogFieldRequestID: middleware.GetReqID(r.Context()),
+		LogFieldHTTPRequest: map[string]any{
+			"requestMethod": r.Method,
+			"requestUrl":    r.URL.EscapedPath(),
+		},
+	})
 }
