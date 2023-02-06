@@ -56,7 +56,7 @@ func run(log *logrus.Logger) error {
 	// set global collection prefix
 	plugin.CollectionPrefix = cfg.Stage
 
-	db, err := firestore.NewClient(context.Background(), "go-semantic-release")
+	db, err := firestore.NewClient(context.Background(), cfg.ProjectID)
 	if err != nil {
 		return err
 	}

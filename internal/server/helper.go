@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -35,5 +36,13 @@ func (s *Server) writeJSONError(w http.ResponseWriter, r *http.Request, statusCo
 }
 
 func (s *Server) requestLogger(r *http.Request) *logrus.Entry {
-	return s.log.WithField("request_id", middleware.GetReqID(r.Context()))
+	trace := ""
+	traceContext, _, hasTrace := strings.Cut(r.Header.Get("X-Cloud-Trace-Context"), "/")
+	if hasTrace {
+		trace = fmt.Sprintf("projects/%s/traces/%s", s.config.ProjectID, traceContext)
+	}
+	return s.log.WithFields(logrus.Fields{
+		"requestID":                    middleware.GetReqID(r.Context()),
+		"logging.googleapis.com/trace": trace,
+	})
 }

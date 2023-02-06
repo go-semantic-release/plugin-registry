@@ -16,6 +16,7 @@ import (
 
 type ServerConfig struct {
 	Stage                       string `envconfig:"STAGE" default:"dev"`
+	ProjectID                   string `envconfig:"GOOGLE_CLOUD_PROJECT_ID" default:"go-semantic-release"`
 	Port                        string `envconfig:"PORT" default:"8080"`
 	BindAddress                 string `envconfig:"BIND_ADDRESS"`
 	GitHubToken                 string `envconfig:"GITHUB_TOKEN" required:"true"`
