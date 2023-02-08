@@ -11,11 +11,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	legacyV1 "github.com/go-semantic-release/plugin-registry/internal/legacy/v1"
-	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/google/go-github/v50/github"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
-	"go.opencensus.io/tag"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -33,8 +31,7 @@ type Server struct {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, _ := tag.New(r.Context(), tag.Upsert(metrics.TagStage, s.config.Stage))
-	s.router.ServeHTTP(w, r.WithContext(ctx))
+	s.router.ServeHTTP(w, r)
 }
 
 func (s *Server) notFoundHandler(w http.ResponseWriter, r *http.Request) {

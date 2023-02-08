@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -54,13 +56,19 @@ func run(log *logrus.Logger) error {
 		log.Warn("request cache disabled")
 	}
 
-	log.Info("setting up metrics exporter...")
+	ocTaskID := fmt.Sprintf("plugin-registry-%d", rand.Int())
+	log.Infof("setting up metrics exporter (opencensus_task=%s)...", ocTaskID)
+	labels := &stackdriver.Labels{}
+	labels.Set("version", version, "version of the plugin-registry")
+	labels.Set("stage", cfg.Stage, "stage of the plugin-registry")
+	labels.Set("opencensus_task", ocTaskID, "Opencensus task identifier")
 	exporter, err := metrics.NewExporter(stackdriver.Options{
 		ProjectID:    cfg.ProjectID,
 		MetricPrefix: "plugin-registry",
 		OnError: func(err error) {
 			log.Warnf("exporter error: %v", err)
 		},
+		DefaultMonitoringLabels: labels,
 	})
 	if err != nil {
 		return err
