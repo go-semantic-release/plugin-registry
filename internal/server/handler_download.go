@@ -11,6 +11,7 @@ import (
 	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/google/go-github/v50/github"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 )
 
 func (s *Server) getLatestSemRelRelease(ctx context.Context) (*github.RepositoryRelease, error) {
@@ -51,7 +52,11 @@ func (s *Server) downloadLatestSemRelBinary(w http.ResponseWriter, r *http.Reque
 	osArchIdentifier := strings.ToLower(fmt.Sprintf("%s_%s", os, arch))
 	for _, asset := range latestRelease.Assets {
 		if strings.Contains(asset.GetName(), osArchIdentifier) {
-			stats.Record(r.Context(), metrics.CounterSemRelDownloads.M(1))
+			ctx, err := tag.New(r.Context(), tag.Upsert(metrics.TagOSArch, osArchIdentifier))
+			if err != nil {
+				s.log.Errorf("could not create context with tag: %v", err)
+			}
+			stats.Record(ctx, metrics.CounterSemRelDownloads.M(1))
 			http.Redirect(w, r, asset.GetBrowserDownloadURL(), http.StatusFound)
 			return
 		}

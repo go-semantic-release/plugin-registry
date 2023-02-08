@@ -4,16 +4,18 @@ import (
 	"fmt"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
-
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 )
 
 var (
 	CounterSemRelDownloads = stats.Int64("semrel_downloads", "Number of semantic-release downloads", "1")
 	CounterCacheHit        = stats.Int64("cache_hits", "Number of cache hits", "1")
 	CounterCacheMiss       = stats.Int64("cache_misses", "Number of cache misses", "1")
+
+	TagOSArch = tag.MustNewKey("os_arch")
 )
 
 var views = []*view.View{
@@ -21,6 +23,7 @@ var views = []*view.View{
 		Name:        "semrel_downloads",
 		Measure:     CounterSemRelDownloads,
 		Description: "Number of semantic-release downloads",
+		TagKeys:     []tag.Key{TagOSArch},
 		Aggregation: view.Count(),
 	},
 	{
