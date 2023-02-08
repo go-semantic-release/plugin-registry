@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	"contrib.go.opencensus.io/exporter/stackdriver/monitoredresource"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/go-semantic-release/plugin-registry/internal/plugin"
@@ -70,6 +71,7 @@ func run(log *logrus.Logger) error {
 				log.Warnf("exporter error: %v", err)
 			},
 			DefaultMonitoringLabels: labels,
+			MonitoredResource:       monitoredresource.Autodetect(),
 		})
 		if eErr != nil {
 			return eErr
