@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/go-semantic-release/plugin-registry/internal/plugin"
@@ -54,7 +55,13 @@ func run(log *logrus.Logger) error {
 	}
 
 	log.Info("setting up metrics exporter...")
-	exporter, err := metrics.NewExporter(cfg)
+	exporter, err := metrics.NewExporter(stackdriver.Options{
+		ProjectID:    cfg.ProjectID,
+		MetricPrefix: "plugin-registry",
+		OnError: func(err error) {
+			log.Warnf("exporter error: %v", err)
+		},
+	})
 	if err != nil {
 		return err
 	}

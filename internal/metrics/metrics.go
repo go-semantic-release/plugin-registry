@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"contrib.go.opencensus.io/exporter/stackdriver"
-	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -42,15 +41,12 @@ var views = []*view.View{
 	},
 }
 
-func NewExporter(cfg *config.ServerConfig) (*stackdriver.Exporter, error) {
+func NewExporter(opt stackdriver.Options) (*stackdriver.Exporter, error) {
 	err := view.Register(views...)
 	if err != nil {
 		return nil, err
 	}
-	exporter, err := stackdriver.NewExporter(stackdriver.Options{
-		ProjectID:    cfg.ProjectID,
-		MetricPrefix: "plugin-registry",
-	})
+	exporter, err := stackdriver.NewExporter(opt)
 	if err != nil {
 		return nil, err
 	}
