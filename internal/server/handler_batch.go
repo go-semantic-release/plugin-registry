@@ -86,7 +86,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 
 	// hash the batch request without the resolved versions
 	batchRequestCacheKey := s.getCacheKeyWithPrefix(cacheKeyPrefixBatchRequest, hex.EncodeToString(batchResponse.Hash()))
-	cachedBatchResponse, found := s.getFromCache(batchRequestCacheKey)
+	cachedBatchResponse, found := s.getFromCache(r.Context(), batchRequestCacheKey)
 	if found {
 		reqLogger.Infof("found cached batch response for %s", batchRequestCacheKey)
 		s.writeJSON(w, cachedBatchResponse)
@@ -153,7 +153,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		// the archive already exists, return the response
 		reqLogger.Infof("found cached archive %s", archiveKey)
 		batchResponse.DownloadChecksum = headRes.Metadata["checksum"]
-		s.setInCache(batchRequestCacheKey, batchResponse)
+		s.setInCache(r.Context(), batchRequestCacheKey, batchResponse)
 		s.writeJSON(w, batchResponse)
 		return
 	}
@@ -203,6 +203,6 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		reqLogger.Errorf("could not remove plugin archive file: %v", rmErr)
 	}
 
-	s.setInCache(batchRequestCacheKey, batchResponse)
+	s.setInCache(r.Context(), batchRequestCacheKey, batchResponse)
 	s.writeJSON(w, batchResponse)
 }

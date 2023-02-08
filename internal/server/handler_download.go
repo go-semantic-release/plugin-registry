@@ -16,7 +16,7 @@ import (
 
 func (s *Server) getLatestSemRelRelease(ctx context.Context) (*github.RepositoryRelease, error) {
 	semrelCacheKey := s.getCacheKeyWithPrefix(cacheKeyPrefixGitHub, "semantic-release/latest")
-	cachedLatestRelease, ok := s.getFromCache(semrelCacheKey)
+	cachedLatestRelease, ok := s.getFromCache(ctx, semrelCacheKey)
 	if ok {
 		return cachedLatestRelease.(*github.RepositoryRelease), nil
 	}
@@ -31,7 +31,7 @@ func (s *Server) getLatestSemRelRelease(ctx context.Context) (*github.Repository
 	if err != nil {
 		return nil, err
 	}
-	s.setInCache(semrelCacheKey, latestRelease, time.Minute*30)
+	s.setInCache(ctx, semrelCacheKey, latestRelease, time.Minute*30)
 	return latestRelease, nil
 }
 

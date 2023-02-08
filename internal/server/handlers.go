@@ -95,7 +95,7 @@ func (s *Server) getPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.setInCache(s.getCacheKeyFromRequest(r), res)
+	s.setInCache(r.Context(), s.getCacheKeyFromRequest(r), res)
 	s.writeJSON(w, res)
 }
 
@@ -113,6 +113,6 @@ func (s *Server) listPluginVersions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.setInCache(s.getCacheKeyFromRequest(r), versions)
+	s.setInCache(r.Context(), s.getCacheKeyFromRequest(r), versions)
 	s.writeJSON(w, versions)
 }

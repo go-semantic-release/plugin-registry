@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"fmt"
-
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"go.opencensus.io/stats"
@@ -15,7 +13,9 @@ var (
 	CounterCacheHit        = stats.Int64("cache_hits", "Number of cache hits", "1")
 	CounterCacheMiss       = stats.Int64("cache_misses", "Number of cache misses", "1")
 
-	TagOSArch = tag.MustNewKey("os_arch")
+	TagStage    = tag.MustNewKey("stage")
+	TagOSArch   = tag.MustNewKey("os_arch")
+	TagCacheKey = tag.MustNewKey("cache_key")
 )
 
 var views = []*view.View{
@@ -23,19 +23,21 @@ var views = []*view.View{
 		Name:        "semrel_downloads",
 		Measure:     CounterSemRelDownloads,
 		Description: "Number of semantic-release downloads",
-		TagKeys:     []tag.Key{TagOSArch},
+		TagKeys:     []tag.Key{TagStage, TagOSArch},
 		Aggregation: view.Count(),
 	},
 	{
 		Name:        "cache_hits",
 		Measure:     CounterCacheHit,
 		Description: "Number of cache hits",
+		TagKeys:     []tag.Key{TagStage, TagCacheKey},
 		Aggregation: view.Count(),
 	},
 	{
 		Name:        "cache_misses",
 		Measure:     CounterCacheMiss,
 		Description: "Number of cache misses",
+		TagKeys:     []tag.Key{TagStage, TagCacheKey},
 		Aggregation: view.Count(),
 	},
 }
@@ -47,7 +49,7 @@ func NewExporter(cfg *config.ServerConfig) (*stackdriver.Exporter, error) {
 	}
 	exporter, err := stackdriver.NewExporter(stackdriver.Options{
 		ProjectID:    cfg.ProjectID,
-		MetricPrefix: fmt.Sprintf("plugin-registry/%s", cfg.Stage),
+		MetricPrefix: "plugin-registry",
 	})
 	if err != nil {
 		return nil, err

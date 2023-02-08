@@ -10,6 +10,7 @@ import (
 	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/patrickmn/go-cache"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 )
 
 type (
@@ -35,17 +36,22 @@ func (s *Server) getCacheKeyWithPrefix(p cacheKeyPrefix, key string) cacheKey {
 	return cacheKey(fmt.Sprintf("%s/%s", p, key))
 }
 
-func (s *Server) getFromCache(k cacheKey) (any, bool) {
-	return s.cache.Get(string(k))
+func (s *Server) getFromCache(ctx context.Context, k cacheKey) (any, bool) {
+	strKey := string(k)
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
+	stats.Record(ctx, metrics.CounterCacheHit.M(1))
+	return s.cache.Get(strKey)
 }
 
-func (s *Server) setInCache(k cacheKey, v any, expiration ...time.Duration) {
-	stats.Record(context.Background(), metrics.CounterCacheMiss.M(1))
+func (s *Server) setInCache(ctx context.Context, k cacheKey, v any, expiration ...time.Duration) {
+	strKey := string(k)
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
+	stats.Record(ctx, metrics.CounterCacheMiss.M(1))
 	exp := cache.DefaultExpiration
 	if len(expiration) > 0 {
 		exp = expiration[0]
 	}
-	s.cache.Set(string(k), v, exp)
+	s.cache.Set(strKey, v, exp)
 }
 
 func (s *Server) invalidateByPrefix(prefix cacheKey) {
@@ -62,8 +68,7 @@ func (s *Server) cacheMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if k, ok := s.getFromCache(s.getCacheKeyFromRequest(r)); ok {
-			stats.Record(r.Context(), metrics.CounterCacheHit.M(1))
+		if k, ok := s.getFromCache(r.Context(), s.getCacheKeyFromRequest(r)); ok {
 			w.Header().Set("X-Go-Cache", "HIT")
 			s.writeJSON(w, k)
 			return
