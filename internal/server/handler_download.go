@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/google/go-github/v50/github"
+	"go.opencensus.io/stats"
 )
 
 func (s *Server) getLatestSemRelRelease(ctx context.Context) (*github.RepositoryRelease, error) {
@@ -49,6 +51,7 @@ func (s *Server) downloadLatestSemRelBinary(w http.ResponseWriter, r *http.Reque
 	osArchIdentifier := strings.ToLower(fmt.Sprintf("%s_%s", os, arch))
 	for _, asset := range latestRelease.Assets {
 		if strings.Contains(asset.GetName(), osArchIdentifier) {
+			stats.Record(r.Context(), metrics.CounterSemRelDownloads.M(1))
 			http.Redirect(w, r, asset.GetBrowserDownloadURL(), http.StatusFound)
 			return
 		}

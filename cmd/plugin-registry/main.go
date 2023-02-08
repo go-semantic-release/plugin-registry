@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
+	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/go-semantic-release/plugin-registry/internal/plugin"
 	"github.com/go-semantic-release/plugin-registry/internal/server"
 	"github.com/sirupsen/logrus"
@@ -51,6 +52,14 @@ func run(log *logrus.Logger) error {
 	if cfg.DisableRequestCache {
 		log.Warn("request cache disabled")
 	}
+
+	log.Info("setting up metrics exporter...")
+	exporter, err := metrics.NewExporter(cfg)
+	if err != nil {
+		return err
+	}
+	defer exporter.Flush()
+	defer exporter.StopMetricsExporter()
 
 	log.Infof("connecting to database (stage=%s)...", cfg.Stage)
 	// set global collection prefix

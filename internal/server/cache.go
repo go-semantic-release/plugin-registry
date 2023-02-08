@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/go-semantic-release/plugin-registry/internal/metrics"
 	"github.com/patrickmn/go-cache"
+	"go.opencensus.io/stats"
 )
 
 type (
@@ -37,6 +40,7 @@ func (s *Server) getFromCache(k cacheKey) (any, bool) {
 }
 
 func (s *Server) setInCache(k cacheKey, v any, expiration ...time.Duration) {
+	stats.Record(context.Background(), metrics.CounterCacheMiss.M(1))
 	exp := cache.DefaultExpiration
 	if len(expiration) > 0 {
 		exp = expiration[0]
@@ -59,6 +63,7 @@ func (s *Server) cacheMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if k, ok := s.getFromCache(s.getCacheKeyFromRequest(r)); ok {
+			stats.Record(r.Context(), metrics.CounterCacheHit.M(1))
 			w.Header().Set("X-Go-Cache", "HIT")
 			s.writeJSON(w, k)
 			return
