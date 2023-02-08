@@ -38,9 +38,12 @@ func (s *Server) getCacheKeyWithPrefix(p cacheKeyPrefix, key string) cacheKey {
 
 func (s *Server) getFromCache(ctx context.Context, k cacheKey) (any, bool) {
 	strKey := string(k)
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
-	stats.Record(ctx, metrics.CounterCacheHit.M(1))
-	return s.cache.Get(strKey)
+	val, ok := s.cache.Get(strKey)
+	if ok {
+		ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
+		stats.Record(ctx, metrics.CounterCacheHit.M(1))
+	}
+	return val, ok
 }
 
 func (s *Server) setInCache(ctx context.Context, k cacheKey, v any, expiration ...time.Duration) {
