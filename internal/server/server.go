@@ -53,6 +53,7 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) invalidateCacheHandler(w http.ResponseWriter, r *http.Request) {
 	prefix := cacheKey(r.URL.Query().Get("prefix"))
 	deleted := s.invalidateByPrefix(prefix)
+	s.log.Warnf("invalidated cache for prefix %s (deleted=%d)", prefix, deleted)
 	s.writeJSON(w, map[string]any{
 		"prefix":  prefix,
 		"deleted": deleted,
