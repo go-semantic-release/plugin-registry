@@ -74,4 +74,9 @@ var Plugins = plugin.Plugins{
 		Name: "plugin-registry-update",
 		Repo: "go-semantic-release/hooks-plugin-registry-update",
 	},
+	{
+		Type: "hooks",
+		Name: "exec",
+		Repo: "go-semantic-release/hooks-exec",
+	},
 }
