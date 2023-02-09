@@ -57,12 +57,15 @@ func (s *Server) setInCache(ctx context.Context, k cacheKey, v any, expiration .
 	s.cache.Set(strKey, v, exp)
 }
 
-func (s *Server) invalidateByPrefix(prefix cacheKey) {
+func (s *Server) invalidateByPrefix(prefix cacheKey) int {
+	cnt := 0
 	for k := range s.cache.Items() {
 		if strings.HasPrefix(k, string(prefix)) {
 			s.cache.Delete(k)
+			cnt++
 		}
 	}
+	return cnt
 }
 
 func (s *Server) cacheMiddleware(next http.Handler) http.Handler {

@@ -50,6 +50,15 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) invalidateCacheHandler(w http.ResponseWriter, r *http.Request) {
+	prefix := cacheKey(r.URL.Query().Get("prefix"))
+	deleted := s.invalidateByPrefix(prefix)
+	s.writeJSON(w, map[string]any{
+		"prefix":  prefix,
+		"deleted": deleted,
+	})
+}
+
 func (s *Server) apiV2Routes(r chi.Router) {
 	r.Route("/plugins", func(r chi.Router) {
 		r.With(s.cacheMiddleware).Group(func(r chi.Router) {
@@ -66,6 +75,7 @@ func (s *Server) apiV2Routes(r chi.Router) {
 			r.Put("/", s.updateAllPlugins)
 			r.Put("/{plugin}", s.updatePlugin)
 			r.Put("/{plugin}/versions/{version}", s.updatePlugin)
+			r.Delete("/_cache", s.invalidateCacheHandler)
 		})
 	})
 }
