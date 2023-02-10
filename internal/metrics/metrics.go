@@ -29,14 +29,14 @@ var views = []*view.View{
 		Name:        "cache_hits",
 		Measure:     CounterCacheHit,
 		Description: "Number of cache hits",
-		TagKeys:     []tag.Key{TagCacheKey},
+		TagKeys:     []tag.Key{TagCacheKey, TagCacheKeyPrefix},
 		Aggregation: view.Count(),
 	},
 	{
 		Name:        "cache_misses",
 		Measure:     CounterCacheMiss,
 		Description: "Number of cache misses",
-		TagKeys:     []tag.Key{TagCacheKey},
+		TagKeys:     []tag.Key{TagCacheKey, TagCacheKeyPrefix},
 		Aggregation: view.Count(),
 	},
 }
