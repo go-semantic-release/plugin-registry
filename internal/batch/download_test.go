@@ -23,11 +23,42 @@ var (
 	testFileChecksum = "3fa65313f3ee7c23d31896e7f57af67618b88dff00f6eb7c3aba2d968d6d4b32"
 )
 
-func TestDownloadFileAndVerifyChecksum(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func getTestServer(t *testing.T, failingRequests int) *httptest.Server {
+	cnt := 0
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cnt++
+		if cnt <= failingRequests {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		_, err := w.Write(testFile)
 		require.NoError(t, err)
 	}))
+}
+
+func TestDownloadFileAndVerifyChecksum(t *testing.T) {
+	ts := getTestServer(t, 0)
+	defer ts.Close()
+
+	var tarBuffer bytes.Buffer
+	tarWriter := tar.NewWriter(&tarBuffer)
+
+	err := downloadFileAndVerifyChecksum(context.Background(), tarWriter, "test", ts.URL, testFileChecksum)
+	require.NoError(t, err)
+	require.NoError(t, tarWriter.Close())
+
+	tarReader := tar.NewReader(&tarBuffer)
+	tarHeader, err := tarReader.Next()
+	require.NoError(t, err)
+	require.Equal(t, "test", tarHeader.Name)
+	require.Equal(t, int64(len(testFile)), tarHeader.Size)
+	fileContent, err := io.ReadAll(tarReader)
+	require.NoError(t, err)
+	require.Equal(t, testFile, fileContent)
+}
+
+func TestDownloadFileAndVerifyChecksumRetry(t *testing.T) {
+	ts := getTestServer(t, 1)
 	defer ts.Close()
 
 	var tarBuffer bytes.Buffer
@@ -60,10 +91,7 @@ func createBatchResponsePlugin(url string, i int) *registry.BatchResponsePlugin 
 }
 
 func TestDownloadFilesAndTarGz(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write(testFile)
-		require.NoError(t, err)
-	}))
+	ts := getTestServer(t, 0)
 	defer ts.Close()
 
 	plugins := make([]*registry.BatchResponsePlugin, 0)

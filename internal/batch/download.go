@@ -10,21 +10,33 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
-var httpClient = &http.Client{
-	Timeout: time.Minute,
+var (
+	defaultRetryableClient     *retryablehttp.Client
+	defaultRetryableClientInit sync.Once
+)
+
+func getDefaultRetryableClient() *retryablehttp.Client {
+	defaultRetryableClientInit.Do(func() {
+		defaultRetryableClient = retryablehttp.NewClient()
+		defaultRetryableClient.Logger = nil
+		defaultRetryableClient.HTTPClient.Timeout = 3 * time.Minute
+	})
+	return defaultRetryableClient
 }
 
 func downloadFileAndVerifyChecksum(ctx context.Context, tarWriter *tar.Writer, fileName, url, checksum string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := httpClient.Do(req)
+	resp, err := getDefaultRetryableClient().Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
