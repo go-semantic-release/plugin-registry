@@ -274,6 +274,9 @@ Returns information about multiple plugins and a download link to a compressed a
 ```
 </details>
 
+## Add a new plugin
+A new plugin must be added to the [internal/config/plugins.go](https://github.com/go-semantic-release/plugin-registry/blob/main/internal/config/plugins.go) file before publishing its first version. Additionally, the [`hooks-plugin-registry-update`](https://github.com/go-semantic-release/hooks-plugin-registry-update) plugin should be used to keep the released plugin version in sync with the registry.
+
 ## Licence
 
 The [MIT License (MIT)](http://opensource.org/licenses/MIT)
