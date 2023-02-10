@@ -10,7 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
-	legacyV1 "github.com/go-semantic-release/plugin-registry/internal/legacy/v1"
 	"github.com/google/go-github/v50/github"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
@@ -107,9 +106,6 @@ func New(log *logrus.Logger, db *firestore.Client, ghClient *github.Client, stor
 	router.MethodNotAllowed(server.methodNotAllowedHandler)
 
 	router.Get("/", server.indexHandler)
-
-	// serve legacy API
-	router.Handle("/api/v1/*", http.StripPrefix("/api/v1/", http.FileServer(http.FS(legacyV1.PluginIndex))))
 
 	router.Route("/api/v2", server.apiV2Routes)
 
