@@ -18,6 +18,11 @@ type (
 	cacheKey       string
 )
 
+func (c cacheKey) Prefix() cacheKeyPrefix {
+	prefix, _, _ := strings.Cut(string(c), "/")
+	return cacheKeyPrefix(prefix)
+}
+
 const (
 	cacheKeyPrefixBatchRequest cacheKeyPrefix = "batch"
 	cacheKeyPrefixRequest      cacheKeyPrefix = "request"
@@ -36,25 +41,26 @@ func (s *Server) getCacheKeyWithPrefix(p cacheKeyPrefix, key string) cacheKey {
 	return cacheKey(fmt.Sprintf("%s/%s", p, key))
 }
 
+func getCacheMetricsCtx(ctx context.Context, k cacheKey) context.Context {
+	ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, string(k)), tag.Upsert(metrics.TagCacheKeyPrefix, string(k.Prefix())))
+	return ctx
+}
+
 func (s *Server) getFromCache(ctx context.Context, k cacheKey) (any, bool) {
-	strKey := string(k)
-	val, ok := s.cache.Get(strKey)
+	val, ok := s.cache.Get(string(k))
 	if ok {
-		ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
-		stats.Record(ctx, metrics.CounterCacheHit.M(1))
+		stats.Record(getCacheMetricsCtx(ctx, k), metrics.CounterCacheHit.M(1))
 	}
 	return val, ok
 }
 
 func (s *Server) setInCache(ctx context.Context, k cacheKey, v any, expiration ...time.Duration) {
-	strKey := string(k)
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.TagCacheKey, strKey))
-	stats.Record(ctx, metrics.CounterCacheMiss.M(1))
+	stats.Record(getCacheMetricsCtx(ctx, k), metrics.CounterCacheMiss.M(1))
 	exp := cache.DefaultExpiration
 	if len(expiration) > 0 {
 		exp = expiration[0]
 	}
-	s.cache.Set(strKey, v, exp)
+	s.cache.Set(string(k), v, exp)
 }
 
 func (s *Server) invalidateByPrefix(prefix cacheKey) int {

@@ -12,8 +12,9 @@ var (
 	CounterCacheHit        = stats.Int64("cache_hits", "Number of cache hits", "1")
 	CounterCacheMiss       = stats.Int64("cache_misses", "Number of cache misses", "1")
 
-	TagOSArch   = tag.MustNewKey("os_arch")
-	TagCacheKey = tag.MustNewKey("cache_key")
+	TagOSArch         = tag.MustNewKey("os_arch")
+	TagCacheKey       = tag.MustNewKey("cache_key")
+	TagCacheKeyPrefix = tag.MustNewKey("cache_key_prefix")
 )
 
 var views = []*view.View{
