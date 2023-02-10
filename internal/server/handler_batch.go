@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -184,10 +185,12 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		Body:        tarFile,
 		ContentType: aws.String("application/gzip"),
 		Metadata: map[string]string{
-			"checksum": tgzChecksum,
-			"hash":     batchResponse.DownloadHash,
-			"os":       batchResponse.OS,
-			"arch":     batchResponse.Arch,
+			"checksum":  tgzChecksum,
+			"hash":      batchResponse.DownloadHash,
+			"os":        batchResponse.OS,
+			"arch":      batchResponse.Arch,
+			"plugins":   strconv.Itoa(len(batchResponse.Plugins)),
+			"cache_key": string(batchRequestCacheKey),
 		},
 	})
 	if closeErr := tarFile.Close(); closeErr != nil {
