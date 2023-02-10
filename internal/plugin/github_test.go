@@ -67,14 +67,30 @@ c3703969  plugin_v1.0.0_linux_arm
 cacce75a  plugin_v1.0.0_linux_arm64
 `
 
-func getCheckSumServer() *httptest.Server {
+func getCheckSumServer(failingRequests int) *httptest.Server {
+	cnt := 0
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cnt++
+		if cnt <= failingRequests {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		_, _ = io.WriteString(w, testChecksumFile)
 	}))
 }
 
 func TestFetchChecksumFile(t *testing.T) {
-	ts := getCheckSumServer()
+	ts := getCheckSumServer(0)
+	defer ts.Close()
+	checksums, err := fetchChecksumFile(context.Background(), ts.URL)
+	require.NoError(t, err)
+	require.Len(t, checksums, 6)
+	require.Equal(t, "0911f3dd", checksums["plugin_v1.0.0_windows_amd64.exe"])
+	require.Equal(t, "cacce75a", checksums["plugin_v1.0.0_linux_arm64"])
+}
+
+func TestFetchChecksumFileRetry(t *testing.T) {
+	ts := getCheckSumServer(1)
 	defer ts.Close()
 	checksums, err := fetchChecksumFile(context.Background(), ts.URL)
 	require.NoError(t, err)
@@ -84,7 +100,7 @@ func TestFetchChecksumFile(t *testing.T) {
 }
 
 func TestGetPluginAssets(t *testing.T) {
-	checksumServer := getCheckSumServer()
+	checksumServer := getCheckSumServer(0)
 	defer checksumServer.Close()
 	dlURL := github.String(checksumServer.URL)
 	ghReleaseAssets := []*github.ReleaseAsset{

@@ -7,15 +7,27 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
 	"github.com/google/go-github/v50/github"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
-var httpClient = &http.Client{
-	Timeout: time.Minute,
+var (
+	defaultRetryableClient     *retryablehttp.Client
+	defaultRetryableClientInit sync.Once
+)
+
+func getDefaultRetryableClient() *retryablehttp.Client {
+	defaultRetryableClientInit.Do(func() {
+		defaultRetryableClient = retryablehttp.NewClient()
+		defaultRetryableClient.Logger = nil
+		defaultRetryableClient.HTTPClient.Timeout = time.Minute
+	})
+	return defaultRetryableClient
 }
 
 func getOwnerRepo(fullRepo string) (string, string) {
@@ -81,11 +93,11 @@ func getGitHubRelease(ctx context.Context, ghClient *github.Client, fullRepo, ta
 
 func fetchChecksumFile(ctx context.Context, url string) (map[string]string, error) {
 	ret := make(map[string]string)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	res, err := httpClient.Do(req)
+	res, err := getDefaultRetryableClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

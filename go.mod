@@ -13,6 +13,8 @@ require (
 	github.com/aws/smithy-go v1.13.5
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/google/go-github/v50 v50.0.0
+	github.com/hashicorp/go-cleanhttp v0.5.2
+	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/migueleliasweb/go-github-mock v0.0.15
 	github.com/patrickmn/go-cache v2.1.0+incompatible
