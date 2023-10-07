@@ -8,7 +8,7 @@ import (
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 )
 
-func (s *Server) listPlugins(w http.ResponseWriter, r *http.Request) {
+func (s *Server) listPlugins(w http.ResponseWriter, _ *http.Request) {
 	res := make([]string, 0)
 	for _, p := range config.Plugins {
 		res = append(res, p.GetFullName())

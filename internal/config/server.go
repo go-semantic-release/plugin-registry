@@ -9,7 +9,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
 )
@@ -49,7 +49,7 @@ func (s *ServerConfig) CreateGitHubClient() *github.Client {
 	return github.NewClient(oauthClient)
 }
 
-func (s *ServerConfig) r2CloudflareEndpointResolver(service, region string, options ...interface{}) (aws.Endpoint, error) {
+func (s *ServerConfig) r2CloudflareEndpointResolver(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
 	return aws.Endpoint{
 		URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", s.CloudflareAccountID),
 	}, nil

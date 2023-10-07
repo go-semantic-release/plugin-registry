@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-semantic-release/plugin-registry/internal/metrics"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v55/github"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 )

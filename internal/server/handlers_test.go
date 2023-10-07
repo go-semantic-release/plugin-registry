@@ -23,7 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
