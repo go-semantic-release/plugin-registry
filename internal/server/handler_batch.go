@@ -161,6 +161,7 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 
 	var s3ResponseError *awshttp.ResponseError
 	if !errors.As(err, &s3ResponseError) || s3ResponseError.HTTPStatusCode() != http.StatusNotFound {
+		reqLogger.Errorf("could not check if plugin archive exists: %v", err)
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not check if plugin archive exists")
 		return
 	}
