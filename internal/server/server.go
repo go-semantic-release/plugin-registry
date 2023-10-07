@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/semaphore"
@@ -41,7 +41,7 @@ func (s *Server) methodNotAllowedHandler(w http.ResponseWriter, r *http.Request)
 	s.writeJSONError(w, r, http.StatusMethodNotAllowed, fmt.Errorf("method now allowed"))
 }
 
-func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) indexHandler(w http.ResponseWriter, _ *http.Request) {
 	s.writeJSON(w, map[string]string{
 		"service": "go-semantic-release plugin registry",
 		"stage":   s.config.Stage,

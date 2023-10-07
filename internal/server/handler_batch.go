@@ -12,8 +12,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/smithy-go"
 	"github.com/go-semantic-release/plugin-registry/internal/batch"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
@@ -159,8 +159,8 @@ func (s *Server) batchGetPlugins(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var genericAPIError *smithy.GenericAPIError
-	if !errors.As(err, &genericAPIError) || genericAPIError.ErrorCode() != "NotFound" {
+	var s3ResponseError *awshttp.ResponseError
+	if !errors.As(err, &s3ResponseError) || s3ResponseError.HTTPStatusCode() != http.StatusNotFound {
 		s.writeJSONError(w, r, http.StatusInternalServerError, err, "could not check if plugin archive exists")
 		return
 	}
