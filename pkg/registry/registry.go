@@ -15,6 +15,7 @@ type Plugin struct {
 	Type          string
 	Name          string
 	URL           string
+	Description   string
 	LatestRelease *PluginRelease
 	Versions      []string
 	UpdatedAt     time.Time

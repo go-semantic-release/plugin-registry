@@ -13,10 +13,11 @@ import (
 )
 
 type Plugin struct {
-	Type    string
-	Name    string
-	Aliases []string
-	Repo    string
+	Type        string
+	Name        string
+	Aliases     []string
+	Repo        string
+	Description string
 }
 
 var CollectionPrefix = "dev"
@@ -28,6 +29,7 @@ type fsPluginData struct {
 	LatestRelease *struct{} `firestore:",omitempty"`
 	Versions      *struct{} `firestore:",omitempty"`
 	UpdatedAt     *struct{} `firestore:",omitempty"`
+	Description   *struct{} `firestore:",omitempty"`
 }
 
 type fsPluginReleaseData struct {
@@ -175,6 +177,8 @@ func (p *Plugin) getPlugin(ctx context.Context, db *firestore.Client) (*registry
 		return nil, dErr
 	}
 	pluginData.Plugin.UpdatedAt = res.UpdateTime
+	// description is a static value that is not stored in firestore
+	pluginData.Plugin.Description = p.Description
 
 	// resolve latest release
 	res, err = pluginData.LatestReleaseRef.Get(ctx)
