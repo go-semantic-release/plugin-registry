@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +69,7 @@ cacce75a  plugin_v1.0.0_linux_arm64
 
 func getCheckSumServer(failingRequests int) *httptest.Server {
 	cnt := 0
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		cnt++
 		if cnt <= failingRequests {
 			w.WriteHeader(http.StatusInternalServerError)

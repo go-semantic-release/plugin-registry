@@ -12,7 +12,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/hashicorp/go-retryablehttp"
 )
 

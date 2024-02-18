@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/semaphore"

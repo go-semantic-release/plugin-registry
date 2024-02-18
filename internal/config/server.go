@@ -9,7 +9,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
 )

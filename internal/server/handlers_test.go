@@ -23,7 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-semantic-release/plugin-registry/internal/config"
 	"github.com/go-semantic-release/plugin-registry/pkg/registry"
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -119,7 +119,7 @@ func createS3Client(t *testing.T) (*s3.Client, func()) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
-		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
 			return aws.Endpoint{
 				URL:               ts.URL,
 				HostnameImmutable: true,
@@ -220,7 +220,7 @@ func createPluginDoc(fsClient *firestore.Client, dlHost, fullName, latestRelease
 }
 
 func bootstrapDatabase(t *testing.T, fsClient *firestore.Client) func() {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, "test-file")
 	}))

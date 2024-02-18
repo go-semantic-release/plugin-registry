@@ -25,7 +25,7 @@ var (
 
 func getTestServer(t *testing.T, failingRequests int) *httptest.Server {
 	cnt := 0
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		cnt++
 		if cnt <= failingRequests {
 			w.WriteHeader(http.StatusInternalServerError)
