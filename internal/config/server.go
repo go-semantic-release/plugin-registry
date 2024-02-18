@@ -64,6 +64,7 @@ func (s *ServerConfig) CreateS3Client() (*s3.Client, error) {
 	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
 		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(s.r2CloudflareEndpointResolver)),
 		awsConfig.WithCredentialsProvider(staticCredentialsProvider),
+		awsConfig.WithRegion("auto"),
 	)
 	if err != nil {
 		return nil, err

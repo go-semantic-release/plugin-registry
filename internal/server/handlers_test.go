@@ -126,6 +126,7 @@ func createS3Client(t *testing.T) (*s3.Client, func()) {
 			}, nil
 		})),
 		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
+		awsConfig.WithRegion("auto"),
 	)
 	require.NoError(t, err)
 	return s3.NewFromConfig(s3Cfg), ts.Close
