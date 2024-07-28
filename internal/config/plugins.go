@@ -94,4 +94,10 @@ var Plugins = plugin.Plugins{
 		Repo:        "go-semantic-release/hooks-exec",
 		Description: "A hooks plugin that executes commands after a new release.",
 	},
+	{
+		Type:        "provider",
+		Name:        "gitea",
+		Repo:        "go-semantic-release/provider-gitea",
+		Description: "A provider plugin that uses the Gitea API to publish releases.",
+	},
 }
