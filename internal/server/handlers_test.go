@@ -119,17 +119,13 @@ func createS3Client(t *testing.T) (*s3.Client, func()) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
-		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				URL:               ts.URL,
-				HostnameImmutable: true,
-			}, nil
-		})),
 		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
 		awsConfig.WithRegion("auto"),
 	)
 	require.NoError(t, err)
-	return s3.NewFromConfig(s3Cfg), ts.Close
+	return s3.NewFromConfig(s3Cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(ts.URL)
+	}), ts.Close
 }
 
 func newTestServer(t *testing.T) (*Server, *firestore.Client, func()) {

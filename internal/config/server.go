@@ -49,10 +49,8 @@ func (s *ServerConfig) CreateGitHubClient() *github.Client {
 	return github.NewClient(oauthClient)
 }
 
-func (s *ServerConfig) r2CloudflareEndpointResolver(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
-	return aws.Endpoint{
-		URL: fmt.Sprintf("https://%s.r2.cloudflarestorage.com", s.CloudflareAccountID),
-	}, nil
+func (s *ServerConfig) r2CloudflareBaseEndpoint(o *s3.Options) {
+	o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", s.CloudflareAccountID))
 }
 
 func (s *ServerConfig) CreateS3Client() (*s3.Client, error) {
@@ -62,14 +60,13 @@ func (s *ServerConfig) CreateS3Client() (*s3.Client, error) {
 		"",
 	)
 	s3Cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
-		awsConfig.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(s.r2CloudflareEndpointResolver)),
 		awsConfig.WithCredentialsProvider(staticCredentialsProvider),
 		awsConfig.WithRegion("auto"),
 	)
 	if err != nil {
 		return nil, err
 	}
-	return s3.NewFromConfig(s3Cfg), nil
+	return s3.NewFromConfig(s3Cfg, s.r2CloudflareBaseEndpoint), nil
 }
 
 func (s *ServerConfig) GetBucket() *string {
